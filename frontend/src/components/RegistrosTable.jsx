@@ -28,10 +28,10 @@ export default function RegistrosTable({ registros }) {
               <td style={s.td}>{r.nome}</td>
               <td style={s.td}>{r.rota}</td>
               <td style={s.td}>{r.data}</td>
-              <td style={s.td}>{r.saida}</td>
-              <td style={s.td}>{r.chegada}</td>
-              <td style={s.td}>{r.kmInicial}</td>
-              <td style={s.td}>{r.kmFinal}</td>
+              <td style={s.td}>{r.saida?.slice(0, 5)}</td>
+              <td style={s.td}>{r.chegada?.slice(0, 5)}</td>
+              <td style={s.td}>{r.km_inicial}</td>
+              <td style={s.td}>{r.km_final}</td>
               <td style={{ ...s.td, fontWeight: 600 }}>{kmRodados(r)}</td>
               <td style={s.td}>
                 {r.turno === 'turno extra'

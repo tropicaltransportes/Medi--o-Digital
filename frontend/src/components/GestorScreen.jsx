@@ -1,18 +1,32 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { carregarRegistros, formatarMes, kmRodados } from '../storage.js';
+import { supabase } from '../supabase.js';
+import { formatarMes, kmRodados } from '../storage.js';
 import RegistrosTable from './RegistrosTable.jsx';
 import { s } from '../styles.js';
 
 export default function GestorScreen() {
-  const [registros, setRegistros] = useState(() => carregarRegistros());
+  const [registros, setRegistros] = useState([]);
+  const [carregando, setCarregando] = useState(true);
   const [filtroCliente, setFiltroCliente] = useState('');
   const [filtroMes, setFiltroMes] = useState('');
   const [aberta, setAberta] = useState(null);
 
-  function recarregar() {
-    setRegistros(carregarRegistros());
+  useEffect(() => {
+    carregarRegistros();
+  }, []);
+
+  async function carregarRegistros() {
+    setCarregando(true);
     setAberta(null);
+    const { data, error } = await supabase
+      .from('registros')
+      .select('*')
+      .order('data', { ascending: false })
+      .order('saida', { ascending: false });
+
+    if (!error && data) setRegistros(data);
+    setCarregando(false);
   }
 
   const clientes = useMemo(
@@ -52,16 +66,16 @@ export default function GestorScreen() {
   }
 
   function exportar(folha) {
-    const dados = folha.registros
+    const dados = [...folha.registros]
       .sort((a, b) => `${a.data}${a.saida}`.localeCompare(`${b.data}${b.saida}`))
       .map((r) => ({
         Motorista: r.nome,
         Rota: r.rota,
         Data: r.data,
-        Saída: r.saida,
-        Chegada: r.chegada,
-        'KM Inicial': r.kmInicial,
-        'KM Final': r.kmFinal,
+        Saída: r.saida?.slice(0, 5) ?? '',
+        Chegada: r.chegada?.slice(0, 5) ?? '',
+        'KM Inicial': r.km_inicial,
+        'KM Final': r.km_final,
         'KM Rodados': kmRodados(r),
         Turno: r.turno === 'turno extra' ? 'Turno Extra' : 'Normal',
         Finalidade: r.finalidade || '',
@@ -75,47 +89,33 @@ export default function GestorScreen() {
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Registros');
-    const nomeArquivo = `folha-${folha.cliente}-${folha.mes}.xlsx`
-      .replace(/\s+/g, '-')
-      .toLowerCase();
-    XLSX.writeFile(wb, nomeArquivo);
+    const nome = `folha-${folha.cliente}-${folha.mes}.xlsx`.replace(/\s+/g, '-').toLowerCase();
+    XLSX.writeFile(wb, nome);
   }
 
   return (
     <div>
       <div style={s.filterRow}>
-        <select
-          value={filtroCliente}
-          onChange={(e) => setFiltroCliente(e.target.value)}
-          style={s.filterInput}
-        >
+        <select value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)} style={s.filterInput}>
           <option value="">Todos os clientes</option>
-          {clientes.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
+          {clientes.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
 
-        <select
-          value={filtroMes}
-          onChange={(e) => setFiltroMes(e.target.value)}
-          style={s.filterInput}
-        >
+        <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} style={s.filterInput}>
           <option value="">Todos os meses</option>
-          {meses.map((m) => (
-            <option key={m} value={m}>{formatarMes(m)}</option>
-          ))}
+          {meses.map((m) => <option key={m} value={m}>{formatarMes(m)}</option>)}
         </select>
 
-        <button style={s.btnSecondary} onClick={recarregar} title="Recarregar registros">
+        <button style={s.btnSecondary} onClick={carregarRegistros}>
           ↻ Atualizar
         </button>
 
         <span style={{ ...s.subtitle, marginLeft: 'auto' }}>
-          {folhas.length} folha{folhas.length !== 1 ? 's' : ''} encontrada{folhas.length !== 1 ? 's' : ''}
+          {carregando ? 'Carregando...' : `${folhas.length} folha${folhas.length !== 1 ? 's' : ''} encontrada${folhas.length !== 1 ? 's' : ''}`}
         </span>
       </div>
 
-      {folhas.length === 0 && (
+      {!carregando && folhas.length === 0 && (
         <div style={{ ...s.card, textAlign: 'center', color: '#6b7280', padding: '48px 24px' }}>
           Nenhuma folha de medição encontrada.
           <br />
@@ -142,10 +142,7 @@ export default function GestorScreen() {
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                <button
-                  style={s.btnSecondary}
-                  onClick={() => setAberta(estaAberta ? null : chave)}
-                >
+                <button style={s.btnSecondary} onClick={() => setAberta(estaAberta ? null : chave)}>
                   {estaAberta ? 'Fechar' : 'Ver registros'}
                 </button>
                 <button style={s.btnGreen} onClick={() => exportar(folha)}>
