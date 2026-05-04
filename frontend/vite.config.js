@@ -3,7 +3,14 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1];
-const base = process.env.GITHUB_ACTIONS && repositoryName ? `/${repositoryName}/` : '/';
+const normalizedBasePath = process.env.BASE_PATH?.trim();
+const base = normalizedBasePath
+  ? normalizedBasePath.startsWith('/')
+    ? normalizedBasePath
+    : `/${normalizedBasePath}`
+  : process.env.GITHUB_ACTIONS && repositoryName
+    ? `/${repositoryName}/`
+    : '/';
 
 export default defineConfig({
   base,
