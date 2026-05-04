@@ -1,0 +1,9 @@
+# Claude Code internal files
+.claude/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Backend
+backend/node_modules/
