@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase.js';
+import { salvarSessao } from '../storage.js';
 import { s } from '../styles.js';
 
-export default function Login() {
+export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
@@ -13,12 +14,18 @@ export default function Login() {
     setErro('');
     setEntrando(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha,
+    const { data, error } = await supabase.rpc('fazer_login', {
+      email_input: email,
+      senha_input: senha,
     });
 
-    if (error) setErro('Email ou senha incorretos.');
+    if (error || !data?.ok) {
+      setErro(data?.erro || 'Erro ao conectar. Tente novamente.');
+    } else {
+      salvarSessao(data);
+      onLogin(data);
+    }
+
     setEntrando(false);
   }
 

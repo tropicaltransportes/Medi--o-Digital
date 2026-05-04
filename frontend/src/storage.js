@@ -1,3 +1,23 @@
+const SESSAO_KEY = 'medicao_sessao_v2';
+
+export function salvarSessao(usuario) {
+  localStorage.setItem(SESSAO_KEY, JSON.stringify(usuario));
+}
+
+export function carregarSessao() {
+  try {
+    const raw = localStorage.getItem(SESSAO_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function limparSessao() {
+  localStorage.removeItem(SESSAO_KEY);
+}
+
 export function formatarMes(mesISO) {
   if (!mesISO || !mesISO.includes('-')) return mesISO;
   const [ano, mes] = mesISO.split('-');
@@ -13,14 +33,4 @@ export function kmRodados(registro) {
   const kmf = Number(registro.km_final);
   if (isNaN(kmi) || isNaN(kmf) || kmf < kmi) return 0;
   return kmf - kmi;
-}
-
-// Supabase retorna time como "HH:mm:ss" — exibe apenas "HH:mm"
-export function formatarHora(hora) {
-  if (!hora) return '';
-  return hora.slice(0, 5);
-}
-
-export function gerarId() {
-  return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
