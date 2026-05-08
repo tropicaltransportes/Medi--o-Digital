@@ -93,7 +93,7 @@ export default function MotoristaScreen({ usuario }) {
   useEffect(() => {
     if (!formI.contrato_id) { setRotas([]); return; }
     supabase.from('rotas').select('id, nome')
-      .eq('contrato_id', formI.contrato_id).eq('ativo', true).order('nome')
+      .eq('contrato_id', formI.contrato_id).order('nome')
       .then(({ data }) => setRotas(data || []));
     setFormI(f => ({ ...f, rota_id: '' }));
   }, [formI.contrato_id]);
