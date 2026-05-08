@@ -21,13 +21,12 @@ export default function GestorScreen() {
       .from('registros')
       .select('*, rotas(nome, contratos(id, nome, cliente)), veiculos(placa, descricao)')
       .order('data', { ascending: false })
-      .order('saida', { ascending: false });
+      .order('horario_saida', { ascending: false });
 
     if (!error && data) setRegistros(data);
     setCarregando(false);
   }
 
-  // Extrai nome do contrato do registro (via join)
   function contratoNome(r) {
     return r.rotas?.contratos?.nome || '—';
   }
@@ -72,28 +71,28 @@ export default function GestorScreen() {
 
   function exportar(folha) {
     const dados = [...folha.registros]
-      .sort((a, b) => `${a.data}${a.saida}`.localeCompare(`${b.data}${b.saida}`))
+      .sort((a, b) => `${a.data}${a.horario_saida}`.localeCompare(`${b.data}${b.horario_saida}`))
       .map((r) => ({
-        Motorista: r.nome,
         Contrato: contratoNome(r),
         Rota: r.rotas?.nome || '—',
         Veículo: r.veiculos ? `${r.veiculos.placa} — ${r.veiculos.descricao}` : '—',
         'Troca Veículo': r.troca_veiculo || '',
+        'Motivo Troca': r.motivo_troca || '',
         Data: r.data,
-        Saída: r.saida?.slice(0, 5) ?? '',
-        Chegada: r.chegada?.slice(0, 5) ?? '',
+        Saída: r.horario_saida?.slice(0, 5) ?? '',
+        Chegada: r.horario_chegada?.slice(0, 5) ?? '',
         'KM Inicial': r.km_inicial,
         'KM Final': r.km_final,
         'KM Rodados': kmRodados(r),
-        Turno: r.turno === 'turno extra' ? 'Turno Extra' : 'Normal',
+        Turno: r.tipo_turno === 'turno extra' ? 'Turno Extra' : 'Normal',
         Status: r.status === 'rascunho' ? 'Rascunho' : 'Completo',
         Finalidade: r.finalidade || '',
-        Observações: r.observacoes || '',
+        Observações: r.observacao || '',
       }));
 
     const ws = XLSX.utils.json_to_sheet(dados);
     ws['!cols'] = [
-      { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 14 },
+      { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 14 }, { wch: 20 },
       { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
       { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 24 }, { wch: 32 },
     ];

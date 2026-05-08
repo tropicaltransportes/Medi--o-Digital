@@ -18,7 +18,7 @@ export default function RegistrosTable({ registros }) {
         <thead>
           <tr>
             {[
-              'Motorista', 'Rota', 'Veículo', 'Data', 'Saída', 'Chegada',
+              'Rota', 'Veículo', 'Data', 'Saída', 'Chegada',
               'KM Ini.', 'KM Fin.', 'KM Rod.', 'Turno', 'Status', 'Observações',
             ].map((col) => (
               <th key={col} style={s.th}>{col}</th>
@@ -28,17 +28,16 @@ export default function RegistrosTable({ registros }) {
         <tbody>
           {registros.map((r) => (
             <tr key={r.id}>
-              <td style={s.td}>{r.nome}</td>
               <td style={s.td}>{r.rotas?.nome || '—'}</td>
               <td style={s.td}>{r.veiculos ? `${r.veiculos.placa}` : '—'}</td>
               <td style={s.td}>{r.data}</td>
-              <td style={s.td}>{r.saida?.slice(0, 5)}</td>
-              <td style={s.td}>{r.chegada?.slice(0, 5)}</td>
+              <td style={s.td}>{r.horario_saida?.slice(0, 5) || '—'}</td>
+              <td style={s.td}>{r.horario_chegada?.slice(0, 5) || '—'}</td>
               <td style={s.td}>{r.km_inicial}</td>
               <td style={s.td}>{r.km_final}</td>
               <td style={{ ...s.td, fontWeight: 600 }}>{kmRodados(r)}</td>
               <td style={s.td}>
-                {r.turno === 'turno extra'
+                {r.tipo_turno === 'turno extra'
                   ? <span style={{ color: '#b45309', fontWeight: 600 }}>Extra</span>
                   : 'Normal'}
               </td>
@@ -47,7 +46,7 @@ export default function RegistrosTable({ registros }) {
                   {r.status === 'rascunho' ? 'Rascunho' : 'Completo'}
                 </span>
               </td>
-              <td style={{ ...s.td, color: '#6b7280', maxWidth: 180 }}>{r.observacoes || '—'}</td>
+              <td style={{ ...s.td, color: '#6b7280', maxWidth: 180 }}>{r.observacao || '—'}</td>
             </tr>
           ))}
         </tbody>

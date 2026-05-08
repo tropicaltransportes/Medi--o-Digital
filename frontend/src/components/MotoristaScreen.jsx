@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../supabase.js';
-import { kmRodados, formatarMes } from '../storage.js';
+import { kmRodados } from '../storage.js';
 import RegistrosTable from './RegistrosTable.jsx';
 import { s } from '../styles.js';
 
@@ -18,12 +18,12 @@ function salvarOffline(items) {
 
 const FORM_INICIAR = {
   contrato_id: '', rota_id: '', veiculo_id: '',
-  data: hoje(), saida: '', km_inicial: '',
-  turno: 'normal', finalidade: '',
+  data: hoje(), horario_saida: '', km_inicial: '',
+  tipo_turno: 'normal', finalidade: '',
 };
 
 const FORM_FINALIZAR = {
-  chegada: '', km_final: '', observacoes: '',
+  horario_chegada: '', km_final: '', observacao: '',
   trocarVeiculo: false,
   veiculo_troca_id: '', troca_veiculo: '', motivo_troca: '',
 };
@@ -128,13 +128,12 @@ export default function MotoristaScreen({ usuario }) {
     setErro('');
     const dados = {
       motorista_id: usuario.id,
-      nome: usuario.nome,
       rota_id: Number(formI.rota_id) || null,
       veiculo_id: Number(formI.veiculo_id) || null,
       data: formI.data,
-      saida: formI.saida,
+      horario_saida: formI.horario_saida,
       km_inicial: Number(formI.km_inicial) || 0,
-      turno: formI.turno,
+      tipo_turno: formI.tipo_turno,
       finalidade: formI.finalidade,
       status: 'rascunho',
     };
@@ -147,7 +146,7 @@ export default function MotoristaScreen({ usuario }) {
       setPendentes(novos);
     } else {
       const { error } = await supabase.from('registros').insert(dados);
-      if (error) { setErro('Erro ao salvar. Tente novamente.'); setSalvando(false); return; }
+      if (error) { setErro('Erro ao salvar. Tente novamente.'); console.error(error); setSalvando(false); return; }
       await carregarDados();
     }
     setSalvando(false);
@@ -159,7 +158,7 @@ export default function MotoristaScreen({ usuario }) {
 
   function abrirFinalizar(rascunho) {
     setRascunhoAtivo(rascunho);
-    setFormF({ ...FORM_FINALIZAR, chegada: agora() });
+    setFormF({ ...FORM_FINALIZAR, horario_chegada: agora() });
     setErro('');
     setView('finalizar');
   }
@@ -172,9 +171,9 @@ export default function MotoristaScreen({ usuario }) {
     if (kmf < kmi) { setErro('KM Final deve ser maior ou igual ao KM Inicial.'); return; }
 
     const atualizacao = {
-      chegada: formF.chegada,
+      horario_chegada: formF.horario_chegada,
       km_final: kmf,
-      observacoes: formF.observacoes,
+      observacao: formF.observacao,
       status: 'completo',
       ...(formF.trocarVeiculo && {
         veiculo_troca_id: Number(formF.veiculo_troca_id) || null,
@@ -230,7 +229,7 @@ export default function MotoristaScreen({ usuario }) {
               </div>
               <div>
                 <label style={s.label}>Horário de saída</label>
-                <input required type="time" value={formI.saida} onChange={ci('saida')} style={s.input} />
+                <input required type="time" value={formI.horario_saida} onChange={ci('horario_saida')} style={s.input} />
               </div>
               <div>
                 <label style={s.label}>KM Inicial</label>
@@ -238,7 +237,7 @@ export default function MotoristaScreen({ usuario }) {
               </div>
               <div>
                 <label style={s.label}>Turno</label>
-                <select value={formI.turno} onChange={ci('turno')} style={s.input}>
+                <select value={formI.tipo_turno} onChange={ci('tipo_turno')} style={s.input}>
                   <option value="normal">Normal</option>
                   <option value="turno extra">Turno extra</option>
                 </select>
@@ -282,9 +281,9 @@ export default function MotoristaScreen({ usuario }) {
               ['Rota', rascunhoAtivo.rotas?.nome || '—'],
               ['Veículo', veiculo ? `${veiculo.placa}` : '—'],
               ['Data', rascunhoAtivo.data],
-              ['Saída', rascunhoAtivo.saida?.slice(0, 5)],
+              ['Saída', rascunhoAtivo.horario_saida?.slice(0, 5)],
               ['KM Inicial', rascunhoAtivo.km_inicial],
-              ['Turno', rascunhoAtivo.turno === 'turno extra' ? 'Extra' : 'Normal'],
+              ['Turno', rascunhoAtivo.tipo_turno === 'turno extra' ? 'Extra' : 'Normal'],
             ].map(([label, val]) => (
               <div key={label}>
                 <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', fontWeight: 600 }}>{label}</p>
@@ -300,7 +299,7 @@ export default function MotoristaScreen({ usuario }) {
             <div style={s.formGrid}>
               <div>
                 <label style={s.label}>Horário de chegada</label>
-                <input required type="time" value={formF.chegada} onChange={cf('chegada')} style={s.input} />
+                <input required type="time" value={formF.horario_chegada} onChange={cf('horario_chegada')} style={s.input} />
               </div>
               <div>
                 <label style={s.label}>KM Final</label>
@@ -308,7 +307,7 @@ export default function MotoristaScreen({ usuario }) {
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={s.label}>Observações</label>
-                <textarea value={formF.observacoes} onChange={cf('observacoes')} style={{ ...s.input, resize: 'vertical' }} rows={2} placeholder="Opcional" />
+                <textarea value={formF.observacao} onChange={cf('observacao')} style={{ ...s.input, resize: 'vertical' }} rows={2} placeholder="Opcional" />
               </div>
             </div>
 
@@ -363,7 +362,7 @@ export default function MotoristaScreen({ usuario }) {
     <div style={s.layout}>
       {/* Barra de status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <button style={{ ...s.btn, fontSize: '0.9rem' }} onClick={() => { setFormI({ ...FORM_INICIAR, data: hoje(), saida: agora() }); setErro(''); setView('iniciar'); }}>
+        <button style={{ ...s.btn, fontSize: '0.9rem' }} onClick={() => { setFormI({ ...FORM_INICIAR, data: hoje(), horario_saida: agora() }); setErro(''); setView('iniciar'); }}>
           + Iniciar novo trajeto
         </button>
 
@@ -392,7 +391,7 @@ export default function MotoristaScreen({ usuario }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <p style={{ margin: 0, fontWeight: 600 }}>Rascunho offline</p>
-                  <p style={{ ...s.subtitle, margin: '2px 0 0' }}>Data: {p.data} · Saída: {p.saida} · KM ini: {p.km_inicial}</p>
+                  <p style={{ ...s.subtitle, margin: '2px 0 0' }}>Data: {p.data} · Saída: {p.horario_saida} · KM ini: {p.km_inicial}</p>
                 </div>
                 <span style={{ ...s.badge, background: '#fef3c7', color: '#92400e' }}>Aguardando sync</span>
               </div>
@@ -406,7 +405,7 @@ export default function MotoristaScreen({ usuario }) {
                 <div>
                   <p style={{ margin: 0, fontWeight: 600 }}>{r.rotas?.nome || 'Rota não definida'}</p>
                   <p style={{ ...s.subtitle, margin: '2px 0 0' }}>
-                    {r.veiculos?.placa} · Saída: {r.saida?.slice(0, 5)} · KM ini: {r.km_inicial}
+                    {r.veiculos?.placa} · Saída: {r.horario_saida?.slice(0, 5)} · KM ini: {r.km_inicial}
                   </p>
                 </div>
                 <button style={{ ...s.btnGreen, whiteSpace: 'nowrap' }} onClick={() => abrirFinalizar(r)}>
