@@ -1,27 +1,21 @@
-const STORAGE_KEY = 'medicao_rotas_registros_v1';
+const SESSAO_KEY = 'medicao_sessao_v2';
 
-export const USUARIOS = {
-  motorista: ['Carlos Silva', 'Ana Paula', 'João Mendes'],
-  gestor: ['Gestor Operacional'],
-};
-
-export function gerarId() {
-  return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+export function salvarSessao(usuario) {
+  localStorage.setItem(SESSAO_KEY, JSON.stringify(usuario));
 }
 
-export function carregarRegistros() {
+export function carregarSessao() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const raw = localStorage.getItem(SESSAO_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
   } catch {
-    return [];
+    return null;
   }
 }
 
-export function salvarRegistros(registros) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+export function limparSessao() {
+  localStorage.removeItem(SESSAO_KEY);
 }
 
 export function formatarMes(mesISO) {
@@ -35,8 +29,8 @@ export function formatarMes(mesISO) {
 }
 
 export function kmRodados(registro) {
-  const kmi = Number(registro.kmInicial);
-  const kmf = Number(registro.kmFinal);
+  const kmi = Number(registro.km_inicial);
+  const kmf = Number(registro.km_final);
   if (isNaN(kmi) || isNaN(kmf) || kmf < kmi) return 0;
   return kmf - kmi;
 }
