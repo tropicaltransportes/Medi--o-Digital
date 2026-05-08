@@ -128,6 +128,7 @@ export default function MotoristaScreen({ usuario }) {
     setErro('');
     const dados = {
       motorista_id: usuario.id,
+      uuid: crypto.randomUUID(),
       rota_id: Number(formI.rota_id) || null,
       veiculo_id: Number(formI.veiculo_id) || null,
       data: formI.data,
