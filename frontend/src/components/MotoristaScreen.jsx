@@ -438,7 +438,7 @@ export default function MotoristaScreen({ usuario }) {
         </h2>
         {carregando
           ? <p style={s.subtitle}>Carregando...</p>
-          : <RegistrosTable registros={historico} />}
+          : <RegistrosTable registros={historico} todasRotas={todasRotas} veiculos={veiculos} />}
       </section>
     </div>
   );

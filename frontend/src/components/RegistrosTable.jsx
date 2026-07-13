@@ -7,9 +7,18 @@ const statusStyle = {
   completo: { color: '#16a34a', fontWeight: 600 },
 };
 
-export default function RegistrosTable({ registros }) {
+export default function RegistrosTable({ registros, todasRotas = [], veiculos = [] }) {
   if (!registros.length) {
     return <p style={{ ...s.subtitle, marginTop: 12 }}>Nenhum registro encontrado.</p>;
+  }
+
+  function rotaNome(r) {
+    if (r.rotas?.nome) return r.rotas.nome;
+    return todasRotas.find(x => x.id === r.rota_id)?.nome || '—';
+  }
+  function veiculoPlaca(r) {
+    if (r.veiculos?.placa) return r.veiculos.placa;
+    return veiculos.find(x => x.id === r.veiculo_id)?.placa || '—';
   }
 
   return (
@@ -28,8 +37,8 @@ export default function RegistrosTable({ registros }) {
         <tbody>
           {registros.map((r) => (
             <tr key={r.id}>
-              <td style={s.td}>{r.rotas?.nome || '—'}</td>
-              <td style={s.td}>{r.veiculos ? `${r.veiculos.placa}` : '—'}</td>
+              <td style={s.td}>{rotaNome(r)}</td>
+              <td style={s.td}>{veiculoPlaca(r)}</td>
               <td style={s.td}>{r.data}</td>
               <td style={s.td}>{r.horario_saida?.slice(0, 5) || '—'}</td>
               <td style={s.td}>{r.horario_chegada?.slice(0, 5) || '—'}</td>
