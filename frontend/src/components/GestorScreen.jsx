@@ -4,9 +4,10 @@ import { supabase } from '../supabase.js';
 import { formatarMes, kmRodados } from '../storage.js';
 import RegistrosTable from './RegistrosTable.jsx';
 import RegrasScreen from './RegrasScreen.jsx';
+import BoletimScreen from './BoletimScreen.jsx';
 import { s } from '../styles.js';
 
-const ABAS = ['Folhas de Medição', 'Regras de Faturamento'];
+const ABAS = ['Folhas de Medição', 'Regras de Faturamento', 'Boletim'];
 
 export default function GestorScreen() {
   const [aba, setAba] = useState(0);
@@ -149,6 +150,7 @@ export default function GestorScreen() {
       </div>
 
       {aba === 1 && <RegrasScreen />}
+      {aba === 2 && <BoletimScreen />}
       {aba === 0 && <div>
       <div style={s.filterRow}>
         <select value={filtroContrato} onChange={(e) => setFiltroContrato(e.target.value)} style={s.filterInput}>
