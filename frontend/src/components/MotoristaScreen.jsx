@@ -34,6 +34,7 @@ export default function MotoristaScreen({ usuario }) {
   const [registros, setRegistros] = useState([]);
   const [contratos, setContratos] = useState([]);
   const [rotas, setRotas] = useState([]);
+  const [todasRotas, setTodasRotas] = useState([]);
   const [veiculos, setVeiculos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -46,18 +47,20 @@ export default function MotoristaScreen({ usuario }) {
 
   const carregarDados = useCallback(async () => {
     setCarregando(true);
-    const [{ data: cont }, { data: veic }, { data: regs, error: regsErr }] = await Promise.all([
+    const [{ data: cont }, { data: veic }, { data: todasRotas }, { data: regs, error: regsErr }] = await Promise.all([
       supabase.from('contratos').select('id, nome').order('nome'),
       supabase.from('veiculos').select('id, placa, descricao').order('placa'),
+      supabase.from('rotas').select('id, nome, contrato_id').order('nome'),
       supabase
         .from('registros')
-        .select('*, rotas(nome), veiculos(placa, descricao)')
+        .select('*')
         .eq('motorista_id', usuario.id)
         .order('data', { ascending: false })
         .order('criado_em', { ascending: false }),
     ]);
     if (cont) setContratos(cont);
     if (veic) setVeiculos(veic);
+    if (todasRotas) setTodasRotas(todasRotas);
     if (regsErr) { console.error('Erro ao carregar registros:', regsErr); setErro('Erro ao carregar registros: ' + regsErr.message); }
     else if (regs) setRegistros(regs);
     setCarregando(false);
@@ -118,6 +121,13 @@ export default function MotoristaScreen({ usuario }) {
 
   const rascunhos = registros.filter(r => r.status === 'rascunho');
   const historico = registros.filter(r => r.status !== 'rascunho');
+
+  function rotaNome(rota_id) {
+    return todasRotas.find(r => r.id === rota_id)?.nome || '—';
+  }
+  function veiculoPlaca(veiculo_id) {
+    return veiculos.find(v => v.id === veiculo_id)?.placa || '—';
+  }
 
   function ci(key) { return (e) => setFormI(f => ({ ...f, [key]: e.target.value })); }
   function cf(key) { return (e) => setFormF(f => ({ ...f, [key]: e.target.value })); }
@@ -268,7 +278,6 @@ export default function MotoristaScreen({ usuario }) {
   }
 
   if (view === 'finalizar' && rascunhoAtivo) {
-    const veiculo = rascunhoAtivo.veiculos;
     return (
       <div style={s.layout}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
@@ -280,8 +289,8 @@ export default function MotoristaScreen({ usuario }) {
         <section style={{ ...s.card, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
             {[
-              ['Rota', rascunhoAtivo.rotas?.nome || '—'],
-              ['Veículo', veiculo ? `${veiculo.placa}` : '—'],
+              ['Rota', rotaNome(rascunhoAtivo.rota_id)],
+              ['Veículo', veiculoPlaca(rascunhoAtivo.veiculo_id)],
               ['Data', rascunhoAtivo.data],
               ['Saída', rascunhoAtivo.horario_saida?.slice(0, 5)],
               ['KM Inicial', rascunhoAtivo.km_inicial],
@@ -405,9 +414,9 @@ export default function MotoristaScreen({ usuario }) {
             <div key={r.id} style={{ border: '1px solid #bfdbfe', borderRadius: 8, padding: 12, marginBottom: 10, background: '#eff6ff' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 600 }}>{r.rotas?.nome || 'Rota não definida'}</p>
+                  <p style={{ margin: 0, fontWeight: 600 }}>{rotaNome(r.rota_id)}</p>
                   <p style={{ ...s.subtitle, margin: '2px 0 0' }}>
-                    {r.veiculos?.placa} · Saída: {r.horario_saida?.slice(0, 5)} · KM ini: {r.km_inicial}
+                    {veiculoPlaca(r.veiculo_id)} · Saída: {r.horario_saida?.slice(0, 5)} · KM ini: {r.km_inicial}
                   </p>
                 </div>
                 <button style={{ ...s.btnGreen, whiteSpace: 'nowrap' }} onClick={() => abrirFinalizar(r)}>
