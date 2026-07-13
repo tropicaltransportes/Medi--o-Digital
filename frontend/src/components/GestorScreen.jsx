@@ -11,7 +11,8 @@ import { s } from '../styles.js';
 const ABAS = ['Folhas de Medição', 'Regras de Faturamento', 'Boletim', 'Cadastros'];
 
 const TURNOS = [
-  { value: 'normal', label: 'Normal' },
+  { value: 'rota', label: 'ROTA' },
+  { value: 'normal', label: 'Turno Normal' },
   { value: 'turno extra', label: 'Turno Extra' },
   { value: 'rodada interna', label: 'Rodada Interna' },
 ];
@@ -167,7 +168,7 @@ export default function GestorScreen() {
           'KM Inicial':   r.km_inicial,
           'KM Final':     r.km_final,
           'KM Rodados':   kmRodados(r),
-          Turno:          r.tipo_turno === 'turno extra' ? 'Turno Extra' : r.tipo_turno === 'rodada interna' ? 'Rodada Interna' : 'Normal',
+          Turno:          r.tipo_turno === 'rota' ? 'ROTA' : r.tipo_turno === 'turno extra' ? 'Turno Extra' : r.tipo_turno === 'rodada interna' ? 'Rodada Interna' : 'Turno Normal',
           'Dom/Feriado':  r.domingo_feriado ? 'Sim' : '',
           Validado:       r.validado ? 'Sim' : '',
           Status:         r.status === 'rascunho' ? 'Rascunho' : 'Completo',

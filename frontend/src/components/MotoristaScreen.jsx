@@ -19,7 +19,7 @@ function salvarOffline(items) {
 const FORM_INICIAR = {
   contrato_id: '', rota_id: '', veiculo_id: '',
   data: hoje(), horario_saida: '', km_inicial: '',
-  tipo_turno: 'normal', finalidade: '',
+  tipo_turno: 'rota', finalidade: '',
 };
 
 const FORM_FINALIZAR = {
@@ -269,9 +269,10 @@ export default function MotoristaScreen({ usuario }) {
               <div>
                 <label style={s.label}>Turno</label>
                 <select value={formI.tipo_turno} onChange={ci('tipo_turno')} style={s.input}>
-                  <option value="normal">Normal</option>
-                  <option value="turno extra">Turno extra</option>
-                  <option value="rodada interna">Rodada interna</option>
+                  <option value="rota">ROTA</option>
+                  <option value="normal">Turno Normal</option>
+                  <option value="turno extra">Turno Extra</option>
+                  <option value="rodada interna">Rodada Interna</option>
                 </select>
               </div>
               <div>
@@ -314,7 +315,7 @@ export default function MotoristaScreen({ usuario }) {
               ['Data', rascunhoAtivo.data],
               ['Saída', rascunhoAtivo.horario_saida?.slice(0, 5)],
               ['KM Inicial', rascunhoAtivo.km_inicial],
-              ['Turno', rascunhoAtivo.tipo_turno === 'turno extra' ? 'Turno Extra' : rascunhoAtivo.tipo_turno === 'rodada interna' ? 'Rodada Interna' : 'Normal'],
+              ['Turno', rascunhoAtivo.tipo_turno === 'rota' ? 'ROTA' : rascunhoAtivo.tipo_turno === 'turno extra' ? 'Turno Extra' : rascunhoAtivo.tipo_turno === 'rodada interna' ? 'Rodada Interna' : 'Turno Normal'],
             ].map(([label, val]) => (
               <div key={label}>
                 <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', fontWeight: 600 }}>{label}</p>

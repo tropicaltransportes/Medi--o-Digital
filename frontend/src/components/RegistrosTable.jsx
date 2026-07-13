@@ -80,11 +80,13 @@ export default function RegistrosTable({
                 <td style={s.td}>
                   {r.domingo_feriado
                     ? <span style={{ color: '#92400e', fontWeight: 600 }}>Normal (Dom/Fer)</span>
+                    : r.tipo_turno === 'rota'
+                    ? <span style={{ color: '#0369a1', fontWeight: 600 }}>ROTA</span>
                     : r.tipo_turno === 'turno extra'
                     ? <span style={{ color: '#b45309', fontWeight: 600 }}>Turno Extra</span>
                     : r.tipo_turno === 'rodada interna'
                     ? <span style={{ color: '#7c3aed', fontWeight: 600 }}>Rodada Interna</span>
-                    : 'Normal'}
+                    : 'Turno Normal'}
                 </td>
                 <td style={s.td}>
                   <span style={statusStyle[r.status] || {}}>
