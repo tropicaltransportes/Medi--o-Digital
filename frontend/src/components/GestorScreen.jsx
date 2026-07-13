@@ -38,6 +38,7 @@ export default function GestorScreen() {
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRota, setFiltroRota] = useState('');
   const [aberta, setAberta] = useState(null);
+  const [rotasAbertas, setRotasAbertas] = useState(new Set());
 
   // edição
   const [editandoRegistro, setEditandoRegistro] = useState(null);
@@ -49,6 +50,7 @@ export default function GestorScreen() {
   async function carregarRegistros() {
     setCarregando(true);
     setAberta(null);
+    setRotasAbertas(new Set());
     const [{ data: regs, error }, { data: rotas }, { data: contratos }, { data: veiculos }] = await Promise.all([
       supabase.from('registros').select('*').order('data', { ascending: false }).order('horario_saida', { ascending: false }),
       supabase.from('rotas').select('id, nome, contrato_id').order('nome'),
@@ -306,31 +308,47 @@ export default function GestorScreen() {
                 </div>
 
                 {estaAberta && rotasDaFolha(folha).map(({ rota, regs }) => {
-                  const kmRota = regs.reduce((a, r) => a + kmRodados(r), 0);
-                  const valRota = regs.filter(r => r.validado).length;
+                  const kmRota   = regs.reduce((a, r) => a + kmRodados(r), 0);
+                  const valRota  = regs.filter(r => r.validado).length;
                   const compRota = regs.filter(r => r.status === 'completo').length;
+                  const rotaKey  = `${chave}__${rota?.id ?? 'sem-rota'}`;
+                  const rotaOpen = rotasAbertas.has(rotaKey);
+                  const toggleRota = () => setRotasAbertas(prev => {
+                    const next = new Set(prev);
+                    rotaOpen ? next.delete(rotaKey) : next.add(rotaKey);
+                    return next;
+                  });
                   return (
-                    <div key={rota?.id ?? 'sem-rota'} style={{ marginTop: 12 }}>
-                      <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        background: '#f1f5f9', borderLeft: '3px solid #2563eb',
-                        padding: '6px 14px', borderRadius: '0 4px 4px 0', marginBottom: 2,
-                      }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e3a5f' }}>
+                    <div key={rotaKey} style={{ marginTop: 10 }}>
+                      <button
+                        onClick={toggleRota}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center',
+                          justifyContent: 'space-between', cursor: 'pointer',
+                          background: '#f1f5f9', border: 'none',
+                          borderLeft: '3px solid #2563eb',
+                          padding: '7px 14px', borderRadius: '0 4px 4px 0',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e3a5f', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: '0.65rem', color: '#2563eb' }}>{rotaOpen ? '▼' : '▶'}</span>
                           {rota?.nome || 'Sem rota'}
                         </span>
                         <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
                           {regs.length} registro{regs.length !== 1 ? 's' : ''} · {kmRota.toLocaleString('pt-BR')} km · {valRota}/{compRota} validados
                         </span>
-                      </div>
-                      <RegistrosTable
-                        registros={regs}
-                        todasRotas={todasRotas}
-                        veiculos={todosVeiculos}
-                        onValidar={handleValidar}
-                        onEditar={handleEditar}
-                        onDomingoFeriado={handleDomingoFeriado}
-                      />
+                      </button>
+                      {rotaOpen && (
+                        <RegistrosTable
+                          registros={regs}
+                          todasRotas={todasRotas}
+                          veiculos={todosVeiculos}
+                          onValidar={handleValidar}
+                          onEditar={handleEditar}
+                          onDomingoFeriado={handleDomingoFeriado}
+                        />
+                      )}
                     </div>
                   );
                 })}
