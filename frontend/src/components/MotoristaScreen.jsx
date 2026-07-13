@@ -102,12 +102,13 @@ export default function MotoristaScreen({ usuario }) {
     setFormI(f => ({ ...f, rota_id: '' }));
   }, [formI.contrato_id]);
 
-  // Auto-preenche KM inicial pelo último registro do veículo selecionado
+  // Auto-preenche KM inicial pelo último registro sem troca do veículo selecionado
   useEffect(() => {
     if (!formI.veiculo_id) return;
     supabase.from('registros').select('km_final')
       .eq('veiculo_id', formI.veiculo_id)
       .eq('status', 'completo')
+      .is('veiculo_troca_id', null)
       .not('km_final', 'is', null)
       .order('data', { ascending: false })
       .order('criado_em', { ascending: false })
@@ -119,12 +120,13 @@ export default function MotoristaScreen({ usuario }) {
       });
   }, [formI.veiculo_id]);
 
-  // Auto-preenche KM Final pelo último registro do veículo substituto
+  // Auto-preenche KM Final pelo último registro do veículo substituto (sem troca — km_final pertence a ele)
   useEffect(() => {
     if (!formF.veiculo_troca_id) return;
     supabase.from('registros').select('km_final')
       .eq('veiculo_id', Number(formF.veiculo_troca_id))
       .eq('status', 'completo')
+      .is('veiculo_troca_id', null)
       .not('km_final', 'is', null)
       .order('data', { ascending: false })
       .order('criado_em', { ascending: false })
