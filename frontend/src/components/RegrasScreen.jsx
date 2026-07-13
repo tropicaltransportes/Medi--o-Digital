@@ -12,7 +12,7 @@ export default function RegrasScreen() {
   const [regra, setRegra] = useState(null);       // regras_contrato row
   const [valores, setValores] = useState([]);      // valores_veiculo rows
   const [form, setForm] = useState({ dias_mes: '', km_franquia_mensal: '' });
-  const [novaConfig, setNovaConfig] = useState({ configuracao: '', valor_mensal: '' });
+  const [novaConfig, setNovaConfig] = useState({ configuracao: '', valor_mensal: '', valor_turno_normal: '', valor_turno_extra: '', valor_km_extra_normal: '', valor_km_extra_turno_extra: '' });
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -66,8 +66,12 @@ export default function RegrasScreen() {
       regra_id: regra.id,
       configuracao: novaConfig.configuracao.trim(),
       valor_mensal: Number(novaConfig.valor_mensal),
+      valor_turno_normal: Number(novaConfig.valor_turno_normal) || 0,
+      valor_turno_extra: Number(novaConfig.valor_turno_extra) || 0,
+      valor_km_extra_normal: Number(novaConfig.valor_km_extra_normal) || 0,
+      valor_km_extra_turno_extra: Number(novaConfig.valor_km_extra_turno_extra) || 0,
     });
-    setNovaConfig({ configuracao: '', valor_mensal: '' });
+    setNovaConfig({ configuracao: '', valor_mensal: '', valor_turno_normal: '', valor_turno_extra: '', valor_km_extra_normal: '', valor_km_extra_turno_extra: '' });
     const { data: v } = await supabase.from('valores_veiculo').select('*').eq('regra_id', regra.id).order('configuracao');
     setValores(v || []);
     setSalvando(false);
@@ -78,9 +82,9 @@ export default function RegrasScreen() {
     setValores(v => v.filter(x => x.id !== id));
   }
 
-  async function editarValor(id, novoValor) {
-    await supabase.from('valores_veiculo').update({ valor_mensal: Number(novoValor) }).eq('id', id);
-    setValores(v => v.map(x => x.id === id ? { ...x, valor_mensal: Number(novoValor) } : x));
+  async function editarCampo(id, campo, valor) {
+    await supabase.from('valores_veiculo').update({ [campo]: Number(valor) }).eq('id', id);
+    setValores(v => v.map(x => x.id === id ? { ...x, [campo]: Number(valor) } : x));
   }
 
   const kmDia = form.dias_mes && form.km_franquia_mensal
@@ -144,19 +148,25 @@ export default function RegrasScreen() {
                     <thead>
                       <tr>
                         <th style={s.th}>Configuração</th>
-                        <th style={s.th}>Valor mensal (R$)</th>
+                        <th style={s.th}>Valor mensal</th>
+                        <th style={s.th}>Turno Normal</th>
+                        <th style={s.th}>Turno Extra</th>
+                        <th style={s.th}>KM Extra Normal</th>
+                        <th style={s.th}>KM Extra T. Extra</th>
                         <th style={s.th}></th>
                       </tr>
                     </thead>
                     <tbody>
                       {valores.map(v => (
                         <tr key={v.id}>
-                          <td style={s.td}>{v.configuracao}</td>
-                          <td style={s.td}>
-                            <input type="number" min="0" step="0.01" defaultValue={v.valor_mensal}
-                              onBlur={e => editarValor(v.id, e.target.value)}
-                              style={{ ...s.input, width: 160, padding: '4px 8px' }} />
-                          </td>
+                          <td style={{ ...s.td, fontWeight: 600 }}>{v.configuracao}</td>
+                          {['valor_mensal', 'valor_turno_normal', 'valor_turno_extra', 'valor_km_extra_normal', 'valor_km_extra_turno_extra'].map(campo => (
+                            <td key={campo} style={s.td}>
+                              <input type="number" min="0" step="0.01" defaultValue={v[campo] ?? 0}
+                                onBlur={e => editarCampo(v.id, campo, e.target.value)}
+                                style={{ ...s.input, width: 120, padding: '4px 8px' }} />
+                            </td>
+                          ))}
                           <td style={s.td}>
                             <button style={{ ...s.btnSecondary, color: '#dc2626', borderColor: '#fca5a5', padding: '4px 10px', fontSize: '0.8rem' }}
                               onClick={() => removerConfig(v.id)}>
@@ -170,23 +180,35 @@ export default function RegrasScreen() {
                 </div>
               )}
 
-              <form onSubmit={adicionarConfig} style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div>
-                  <label style={s.label}>Configuração</label>
-                  <select required value={novaConfig.configuracao}
-                    onChange={e => setNovaConfig(n => ({ ...n, configuracao: e.target.value }))}
-                    style={{ ...s.input, width: 200 }}>
-                    <option value="">Selecione...</option>
-                    {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+              <form onSubmit={adicionarConfig}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginTop: 16, alignItems: 'flex-end' }}>
+                  <div>
+                    <label style={s.label}>Configuração</label>
+                    <select required value={novaConfig.configuracao}
+                      onChange={e => setNovaConfig(n => ({ ...n, configuracao: e.target.value }))}
+                      style={s.input}>
+                      <option value="">Selecione...</option>
+                      {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  {[
+                    ['valor_mensal', 'Valor mensal (R$)'],
+                    ['valor_turno_normal', 'Turno Normal (R$)'],
+                    ['valor_turno_extra', 'Turno Extra (R$)'],
+                    ['valor_km_extra_normal', 'KM Extra Normal (R$)'],
+                    ['valor_km_extra_turno_extra', 'KM Extra T. Extra (R$)'],
+                  ].map(([campo, label]) => (
+                    <div key={campo}>
+                      <label style={s.label}>{label}</label>
+                      <input required type="number" min="0" step="0.01" value={novaConfig[campo]}
+                        onChange={e => setNovaConfig(n => ({ ...n, [campo]: e.target.value }))}
+                        style={s.input} placeholder="0,00" />
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <button style={s.btnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
+                  </div>
                 </div>
-                <div>
-                  <label style={s.label}>Valor mensal (R$)</label>
-                  <input required type="number" min="0" step="0.01" value={novaConfig.valor_mensal}
-                    onChange={e => setNovaConfig(n => ({ ...n, valor_mensal: e.target.value }))}
-                    style={{ ...s.input, width: 160 }} placeholder="Ex: 31916,33" />
-                </div>
-                <button style={s.btnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
               </form>
             </section>
           )}
