@@ -180,7 +180,7 @@ export default function MotoristaScreen({ usuario }) {
     setErro('');
     const kmi = Number(rascunhoAtivo.km_inicial);
     const kmf = Number(formF.km_final);
-    if (kmf < kmi) { setErro('KM Final deve ser maior ou igual ao KM Inicial.'); return; }
+    if (!formF.trocarVeiculo && kmf < kmi) { setErro('KM Final deve ser maior ou igual ao KM Inicial.'); return; }
 
     const atualizacao = {
       horario_chegada: formF.horario_chegada,
