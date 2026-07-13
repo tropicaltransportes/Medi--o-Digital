@@ -3,9 +3,13 @@ import * as XLSX from 'xlsx';
 import { supabase } from '../supabase.js';
 import { formatarMes, kmRodados } from '../storage.js';
 import RegistrosTable from './RegistrosTable.jsx';
+import RegrasScreen from './RegrasScreen.jsx';
 import { s } from '../styles.js';
 
+const ABAS = ['Folhas de Medição', 'Regras de Faturamento'];
+
 export default function GestorScreen() {
+  const [aba, setAba] = useState(0);
   const [registros, setRegistros] = useState([]);
   const [todasRotas, setTodasRotas] = useState([]);
   const [todosContratos, setTodosContratos] = useState([]);
@@ -129,6 +133,23 @@ export default function GestorScreen() {
 
   return (
     <div>
+      {/* Abas */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e5e7eb' }}>
+        {ABAS.map((nome, i) => (
+          <button key={i} onClick={() => setAba(i)} style={{
+            padding: '8px 20px', border: 'none', background: 'none', cursor: 'pointer',
+            fontWeight: 600, fontSize: '0.9rem',
+            color: aba === i ? '#2563eb' : '#6b7280',
+            borderBottom: aba === i ? '2px solid #2563eb' : '2px solid transparent',
+            marginBottom: -2,
+          }}>
+            {nome}
+          </button>
+        ))}
+      </div>
+
+      {aba === 1 && <RegrasScreen />}
+      {aba === 0 && <div>
       <div style={s.filterRow}>
         <select value={filtroContrato} onChange={(e) => setFiltroContrato(e.target.value)} style={s.filterInput}>
           <option value="">Todos os contratos</option>
@@ -189,6 +210,7 @@ export default function GestorScreen() {
           </article>
         );
       })}
+      </div>}
     </div>
   );
 }
