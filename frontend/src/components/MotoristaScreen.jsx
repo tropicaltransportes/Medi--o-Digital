@@ -252,6 +252,7 @@ export default function MotoristaScreen({ usuario }) {
                 <select value={formI.tipo_turno} onChange={ci('tipo_turno')} style={s.input}>
                   <option value="normal">Normal</option>
                   <option value="turno extra">Turno extra</option>
+                  <option value="rodada interna">Rodada interna</option>
                 </select>
               </div>
               <div>
@@ -294,7 +295,7 @@ export default function MotoristaScreen({ usuario }) {
               ['Data', rascunhoAtivo.data],
               ['Saída', rascunhoAtivo.horario_saida?.slice(0, 5)],
               ['KM Inicial', rascunhoAtivo.km_inicial],
-              ['Turno', rascunhoAtivo.tipo_turno === 'turno extra' ? 'Extra' : 'Normal'],
+              ['Turno', rascunhoAtivo.tipo_turno === 'turno extra' ? 'Turno Extra' : rascunhoAtivo.tipo_turno === 'rodada interna' ? 'Rodada Interna' : 'Normal'],
             ].map(([label, val]) => (
               <div key={label}>
                 <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', fontWeight: 600 }}>{label}</p>
@@ -417,6 +418,7 @@ export default function MotoristaScreen({ usuario }) {
                   <p style={{ margin: 0, fontWeight: 600 }}>{rotaNome(r.rota_id)}</p>
                   <p style={{ ...s.subtitle, margin: '2px 0 0' }}>
                     {veiculoPlaca(r.veiculo_id)} · Saída: {r.horario_saida?.slice(0, 5)} · KM ini: {r.km_inicial}
+                    {r.finalidade ? ` · ${r.finalidade}` : ''}
                   </p>
                 </div>
                 <button style={{ ...s.btnGreen, whiteSpace: 'nowrap' }} onClick={() => abrirFinalizar(r)}>

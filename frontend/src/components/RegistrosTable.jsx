@@ -38,7 +38,9 @@ export default function RegistrosTable({ registros }) {
               <td style={{ ...s.td, fontWeight: 600 }}>{kmRodados(r)}</td>
               <td style={s.td}>
                 {r.tipo_turno === 'turno extra'
-                  ? <span style={{ color: '#b45309', fontWeight: 600 }}>Extra</span>
+                  ? <span style={{ color: '#b45309', fontWeight: 600 }}>Turno Extra</span>
+                  : r.tipo_turno === 'rodada interna'
+                  ? <span style={{ color: '#7c3aed', fontWeight: 600 }}>Rodada Interna</span>
                   : 'Normal'}
               </td>
               <td style={s.td}>

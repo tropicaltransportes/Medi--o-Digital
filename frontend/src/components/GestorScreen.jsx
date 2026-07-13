@@ -84,7 +84,7 @@ export default function GestorScreen() {
         'KM Inicial': r.km_inicial,
         'KM Final': r.km_final,
         'KM Rodados': kmRodados(r),
-        Turno: r.tipo_turno === 'turno extra' ? 'Turno Extra' : 'Normal',
+        Turno: r.tipo_turno === 'turno extra' ? 'Turno Extra' : r.tipo_turno === 'rodada interna' ? 'Rodada Interna' : 'Normal',
         Status: r.status === 'rascunho' ? 'Rascunho' : 'Completo',
         Finalidade: r.finalidade || '',
         Observações: r.observacao || '',
