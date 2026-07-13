@@ -57,7 +57,9 @@ export default function RegistrosTable({ registros, todasRotas = [], veiculos = 
                   {r.status === 'rascunho' ? 'Rascunho' : 'Completo'}
                 </span>
               </td>
-              <td style={{ ...s.td, color: '#6b7280', maxWidth: 180 }}>{r.observacao || '—'}</td>
+              <td style={{ ...s.td, color: '#6b7280', maxWidth: 180 }}>
+                {[r.finalidade, r.observacao].filter(Boolean).join(' · ') || '—'}
+              </td>
             </tr>
           ))}
         </tbody>
