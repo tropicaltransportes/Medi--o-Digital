@@ -15,19 +15,11 @@ export default function RegrasScreen() {
   const [novaConfig, setNovaConfig] = useState({ configuracao: '', valor_mensal: '', valor_turno_normal: '', valor_turno_extra: '', valor_km_extra_normal: '', valor_km_extra_turno_extra: '' });
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState('');
-  const [veiculos, setVeiculos] = useState([]);
 
   useEffect(() => {
     supabase.from('contratos').select('id, nome').order('nome')
       .then(({ data }) => setContratos(data || []));
-    supabase.from('veiculos').select('id, placa, descricao, configuracao').order('placa')
-      .then(({ data }) => setVeiculos(data || []));
   }, []);
-
-  async function salvarConfiguracaoVeiculo(id, configuracao) {
-    await supabase.from('veiculos').update({ configuracao }).eq('id', id);
-    setVeiculos(v => v.map(x => x.id === id ? { ...x, configuracao } : x));
-  }
 
   useEffect(() => {
     if (!contratoId) { setRegra(null); setValores([]); setForm({ dias_mes: '', km_franquia_mensal: '' }); return; }
@@ -226,37 +218,6 @@ export default function RegrasScreen() {
           )}
         </>
       )}
-
-      {/* Configuração global de veículos */}
-      <section style={{ ...s.card, marginTop: 24 }}>
-        <h2 style={s.h2}>Configuração de veículos</h2>
-        <p style={{ ...s.subtitle, marginBottom: 12 }}>Associe cada veículo ao seu tipo de faturamento. Isso é usado no Boletim.</p>
-        <div style={s.tableWrap}>
-          <table style={s.table}>
-            <thead>
-              <tr>
-                <th style={s.th}>Placa</th>
-                <th style={s.th}>Descrição</th>
-                <th style={s.th}>Configuração</th>
-              </tr>
-            </thead>
-            <tbody>
-              {veiculos.map(v => (
-                <tr key={v.id}>
-                  <td style={{ ...s.td, fontWeight: 600 }}>{v.placa}</td>
-                  <td style={s.td}>{v.descricao}</td>
-                  <td style={s.td}>
-                    <select value={v.configuracao || ''} onChange={e => salvarConfiguracaoVeiculo(v.id, e.target.value)} style={{ ...s.input, width: 200, padding: '4px 8px' }}>
-                      <option value="">Sem configuração</option>
-                      {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
   );
 }

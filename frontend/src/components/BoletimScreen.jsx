@@ -270,7 +270,7 @@ export default function BoletimScreen() {
 
           {linhas.some(l => l.semConfig) && (
             <p style={{ color: '#dc2626', marginTop: 12, fontSize: '0.85rem', fontWeight: 600 }}>
-              ⚠ Alguns veículos não têm configuração de faturamento definida. Configure em "Regras de Faturamento" → Veículos.
+              ⚠ Alguns veículos não têm configuração de faturamento definida. Configure em "Cadastros" → Veículos.
             </p>
           )}
         </>
