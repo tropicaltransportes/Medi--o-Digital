@@ -36,6 +36,7 @@ export default function GestorScreen() {
   const [carregando, setCarregando] = useState(true);
   const [filtroContrato, setFiltroContrato] = useState('');
   const [filtroMes, setFiltroMes] = useState('');
+  const [filtroRota, setFiltroRota] = useState('');
   const [aberta, setAberta] = useState(null);
 
   // edição
@@ -127,9 +128,22 @@ export default function GestorScreen() {
     [registros],
   );
 
+  // Rotas disponíveis para o filtro, limitadas ao contrato+mês selecionado
+  const rotasDisponiveis = useMemo(() => {
+    const ids = new Set(
+      registros
+        .filter(r => !filtroContrato || contratoNome(r) === filtroContrato)
+        .filter(r => !filtroMes || r.data?.slice(0, 7) === filtroMes)
+        .map(r => r.rota_id)
+        .filter(Boolean),
+    );
+    return todasRotas.filter(r => ids.has(r.id)).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [registros, todasRotas, todosContratos, filtroContrato, filtroMes]);
+
   const folhas = useMemo(() => {
     const map = new Map();
     for (const r of registros) {
+      if (filtroRota && r.rota_id !== Number(filtroRota)) continue;
       const contrato = contratoNome(r);
       const cliente  = contratoDeRegistro(r)?.cliente || '—';
       const mes      = r.data?.slice(0, 7) || 'sem-data';
@@ -143,7 +157,20 @@ export default function GestorScreen() {
         (!filtroMes      || f.mes      === filtroMes),
       )
       .sort((a, b) => b.mes.localeCompare(a.mes));
-  }, [registros, todasRotas, todosContratos, filtroContrato, filtroMes]);
+  }, [registros, todasRotas, todosContratos, filtroContrato, filtroMes, filtroRota]);
+
+  // Sub-agrupamento por rota dentro de uma folha
+  function rotasDaFolha(folha) {
+    const map = new Map();
+    for (const r of folha.registros) {
+      const id = r.rota_id ?? 'sem-rota';
+      if (!map.has(id)) {
+        map.set(id, { rota: todasRotas.find(x => x.id === r.rota_id) || null, regs: [] });
+      }
+      map.get(id).regs.push(r);
+    }
+    return Array.from(map.values()).sort((a, b) => (a.rota?.nome || '').localeCompare(b.rota?.nome || ''));
+  }
 
   function totalKm(folha) { return folha.registros.reduce((acc, r) => acc + kmRodados(r), 0); }
 
@@ -222,6 +249,10 @@ export default function GestorScreen() {
               <option value="">Todos os meses</option>
               {meses.map(m => <option key={m} value={m}>{formatarMes(m)}</option>)}
             </select>
+            <select value={filtroRota} onChange={e => setFiltroRota(e.target.value)} style={s.filterInput}>
+              <option value="">Todas as rotas</option>
+              {rotasDisponiveis.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
+            </select>
             <button style={s.btnSecondary} onClick={carregarRegistros}>↻ Atualizar</button>
             <span style={{ ...s.subtitle, marginLeft: 'auto' }}>
               {carregando
@@ -274,16 +305,35 @@ export default function GestorScreen() {
                   </div>
                 </div>
 
-                {estaAberta && (
-                  <RegistrosTable
-                    registros={folha.registros}
-                    todasRotas={todasRotas}
-                    veiculos={todosVeiculos}
-                    onValidar={handleValidar}
-                    onEditar={handleEditar}
-                    onDomingoFeriado={handleDomingoFeriado}
-                  />
-                )}
+                {estaAberta && rotasDaFolha(folha).map(({ rota, regs }) => {
+                  const kmRota = regs.reduce((a, r) => a + kmRodados(r), 0);
+                  const valRota = regs.filter(r => r.validado).length;
+                  const compRota = regs.filter(r => r.status === 'completo').length;
+                  return (
+                    <div key={rota?.id ?? 'sem-rota'} style={{ marginTop: 12 }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        background: '#f1f5f9', borderLeft: '3px solid #2563eb',
+                        padding: '6px 14px', borderRadius: '0 4px 4px 0', marginBottom: 2,
+                      }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e3a5f' }}>
+                          {rota?.nome || 'Sem rota'}
+                        </span>
+                        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                          {regs.length} registro{regs.length !== 1 ? 's' : ''} · {kmRota.toLocaleString('pt-BR')} km · {valRota}/{compRota} validados
+                        </span>
+                      </div>
+                      <RegistrosTable
+                        registros={regs}
+                        todasRotas={todasRotas}
+                        veiculos={todosVeiculos}
+                        onValidar={handleValidar}
+                        onEditar={handleEditar}
+                        onDomingoFeriado={handleDomingoFeriado}
+                      />
+                    </div>
+                  );
+                })}
               </article>
             );
           })}
