@@ -315,7 +315,7 @@ export default function MotoristaScreen({ usuario }) {
               </div>
               <div>
                 <label style={s.label}>KM Final</label>
-                <input required type="number" min={rascunhoAtivo.km_inicial} value={formF.km_final} onChange={cf('km_final')} style={s.input} placeholder={`Mín: ${rascunhoAtivo.km_inicial}`} />
+                <input required type="number" min={formF.trocarVeiculo ? 0 : rascunhoAtivo.km_inicial} value={formF.km_final} onChange={cf('km_final')} style={s.input} placeholder={formF.trocarVeiculo ? 'KM do veículo substituto' : `Mín: ${rascunhoAtivo.km_inicial}`} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={s.label}>Observações</label>
