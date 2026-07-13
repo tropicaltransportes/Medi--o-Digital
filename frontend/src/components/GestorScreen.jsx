@@ -7,6 +7,9 @@ import { s } from '../styles.js';
 
 export default function GestorScreen() {
   const [registros, setRegistros] = useState([]);
+  const [todasRotas, setTodasRotas] = useState([]);
+  const [todosContratos, setTodosContratos] = useState([]);
+  const [todosVeiculos, setTodosVeiculos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [filtroContrato, setFiltroContrato] = useState('');
   const [filtroMes, setFiltroMes] = useState('');
@@ -17,23 +20,41 @@ export default function GestorScreen() {
   async function carregarRegistros() {
     setCarregando(true);
     setAberta(null);
-    const { data, error } = await supabase
-      .from('registros')
-      .select('*, rotas(nome, contratos(id, nome, cliente)), veiculos(placa, descricao)')
-      .order('data', { ascending: false })
-      .order('horario_saida', { ascending: false });
+    const [{ data: regs, error }, { data: rotas }, { data: contratos }, { data: veiculos }] = await Promise.all([
+      supabase.from('registros').select('*').order('data', { ascending: false }).order('horario_saida', { ascending: false }),
+      supabase.from('rotas').select('id, nome, contrato_id').order('nome'),
+      supabase.from('contratos').select('id, nome, cliente').order('nome'),
+      supabase.from('veiculos').select('id, placa, descricao').order('placa'),
+    ]);
 
-    if (!error && data) setRegistros(data);
+    if (!error && regs) setRegistros(regs);
+    if (rotas) setTodasRotas(rotas);
+    if (contratos) setTodosContratos(contratos);
+    if (veiculos) setTodosVeiculos(veiculos);
     setCarregando(false);
   }
 
+  function rotaDeRegistro(r) {
+    return todasRotas.find(x => x.id === r.rota_id) || null;
+  }
+
+  function contratoDeRegistro(r) {
+    const rota = rotaDeRegistro(r);
+    if (!rota) return null;
+    return todosContratos.find(x => x.id === rota.contrato_id) || null;
+  }
+
   function contratoNome(r) {
-    return r.rotas?.contratos?.nome || '—';
+    return contratoDeRegistro(r)?.nome || '—';
+  }
+
+  function veiculoDeRegistro(r) {
+    return todosVeiculos.find(x => x.id === r.veiculo_id) || null;
   }
 
   const contratos = useMemo(
     () => [...new Set(registros.map((r) => contratoNome(r)).filter((c) => c !== '—'))].sort(),
-    [registros],
+    [registros, todasRotas, todosContratos],
   );
 
   const meses = useMemo(
@@ -48,7 +69,7 @@ export default function GestorScreen() {
     const map = new Map();
     for (const r of registros) {
       const contrato = contratoNome(r);
-      const cliente = r.rotas?.contratos?.cliente || '—';
+      const cliente = contratoDeRegistro(r)?.cliente || '—';
       const mes = r.data?.slice(0, 7) || 'sem-data';
       const chave = `${contrato}__${mes}`;
       if (!map.has(chave)) {
@@ -63,7 +84,7 @@ export default function GestorScreen() {
           (!filtroMes || f.mes === filtroMes),
       )
       .sort((a, b) => b.mes.localeCompare(a.mes));
-  }, [registros, filtroContrato, filtroMes]);
+  }, [registros, todasRotas, todosContratos, filtroContrato, filtroMes]);
 
   function totalKm(folha) {
     return folha.registros.reduce((acc, r) => acc + kmRodados(r), 0);
@@ -72,23 +93,27 @@ export default function GestorScreen() {
   function exportar(folha) {
     const dados = [...folha.registros]
       .sort((a, b) => `${a.data}${a.horario_saida}`.localeCompare(`${b.data}${b.horario_saida}`))
-      .map((r) => ({
-        Contrato: contratoNome(r),
-        Rota: r.rotas?.nome || '—',
-        Veículo: r.veiculos ? `${r.veiculos.placa} — ${r.veiculos.descricao}` : '—',
-        'Troca Veículo': r.troca_veiculo || '',
-        'Motivo Troca': r.motivo_troca || '',
-        Data: r.data,
-        Saída: r.horario_saida?.slice(0, 5) ?? '',
-        Chegada: r.horario_chegada?.slice(0, 5) ?? '',
-        'KM Inicial': r.km_inicial,
-        'KM Final': r.km_final,
-        'KM Rodados': kmRodados(r),
-        Turno: r.tipo_turno === 'turno extra' ? 'Turno Extra' : r.tipo_turno === 'rodada interna' ? 'Rodada Interna' : 'Normal',
-        Status: r.status === 'rascunho' ? 'Rascunho' : 'Completo',
-        Finalidade: r.finalidade || '',
-        Observações: r.observacao || '',
-      }));
+      .map((r) => {
+        const rota = rotaDeRegistro(r);
+        const veiculo = veiculoDeRegistro(r);
+        return {
+          Contrato: contratoNome(r),
+          Rota: rota?.nome || '—',
+          Veículo: veiculo ? `${veiculo.placa} — ${veiculo.descricao}` : '—',
+          'Troca Veículo': r.troca_veiculo || '',
+          'Motivo Troca': r.motivo_troca || '',
+          Data: r.data,
+          Saída: r.horario_saida?.slice(0, 5) ?? '',
+          Chegada: r.horario_chegada?.slice(0, 5) ?? '',
+          'KM Inicial': r.km_inicial,
+          'KM Final': r.km_final,
+          'KM Rodados': kmRodados(r),
+          Turno: r.tipo_turno === 'turno extra' ? 'Turno Extra' : r.tipo_turno === 'rodada interna' ? 'Rodada Interna' : 'Normal',
+          Status: r.status === 'rascunho' ? 'Rascunho' : 'Completo',
+          Finalidade: r.finalidade || '',
+          Observações: r.observacao || '',
+        };
+      });
 
     const ws = XLSX.utils.json_to_sheet(dados);
     ws['!cols'] = [
@@ -160,7 +185,7 @@ export default function GestorScreen() {
               </div>
             </div>
 
-            {estaAberta && <RegistrosTable registros={folha.registros} />}
+            {estaAberta && <RegistrosTable registros={folha.registros} todasRotas={todasRotas} veiculos={todosVeiculos} />}
           </article>
         );
       })}
