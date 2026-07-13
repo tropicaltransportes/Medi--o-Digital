@@ -46,19 +46,20 @@ export default function MotoristaScreen({ usuario }) {
 
   const carregarDados = useCallback(async () => {
     setCarregando(true);
-    const [{ data: cont }, { data: veic }, { data: regs }] = await Promise.all([
+    const [{ data: cont }, { data: veic }, { data: regs, error: regsErr }] = await Promise.all([
       supabase.from('contratos').select('id, nome').order('nome'),
       supabase.from('veiculos').select('id, placa, descricao').order('placa'),
       supabase
         .from('registros')
-        .select('*, rotas(nome, contratos(nome, cliente)), veiculos(placa, descricao)')
+        .select('*, rotas(nome), veiculos(placa, descricao)')
         .eq('motorista_id', usuario.id)
         .order('data', { ascending: false })
         .order('criado_em', { ascending: false }),
     ]);
     if (cont) setContratos(cont);
     if (veic) setVeiculos(veic);
-    if (regs) setRegistros(regs);
+    if (regsErr) { console.error('Erro ao carregar registros:', regsErr); setErro('Erro ao carregar registros: ' + regsErr.message); }
+    else if (regs) setRegistros(regs);
     setCarregando(false);
   }, [usuario.id]);
 
