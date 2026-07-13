@@ -61,9 +61,10 @@ export default function BoletimScreen() {
         .in('rota_id', rotaIds)
         .gte('data', `${mes}-01`)
         .lte('data', `${mes}-31`)
-        .eq('status', 'completo');
+        .eq('validado', true);
       regsData = data || [];
     }
+
 
     setRotas(rotasData || []);
     setVeiculos(veicData || []);
@@ -91,8 +92,10 @@ export default function BoletimScreen() {
       const kmFranquia = regra?.km_franquia_mensal || 0;
       const kmExtra = Math.max(0, kmTotal - kmFranquia);
 
-      const tnQuant = g.regs.filter(r => r.tipo_turno === 'normal').length;
-      const teQuant = g.regs.filter(r => r.tipo_turno === 'turno extra').length;
+      // dom/feriado sobrepõe tipo_turno → conta como turno normal
+      const tipoEfetivo = r => r.domingo_feriado ? 'normal' : r.tipo_turno;
+      const tnQuant = g.regs.filter(r => tipoEfetivo(r) === 'normal').length;
+      const teQuant = g.regs.filter(r => tipoEfetivo(r) === 'turno extra').length;
 
       const valorFixo    = billing?.valor_mensal || 0;
       const tnValor      = billing?.valor_turno_normal || 0;
