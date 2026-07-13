@@ -4,6 +4,8 @@ import { s } from '../styles.js';
 
 const inputNum = { ...s.input, width: '100%' };
 
+const TIPOS_VEICULO = ['RODOVIÁRIO', 'SEMI RODOVIÁRIO', 'URBANO', 'MICRO', 'VAN', 'PEQUENO PORTE'];
+
 export default function RegrasScreen() {
   const [contratos, setContratos] = useState([]);
   const [contratoId, setContratoId] = useState('');
@@ -82,7 +84,7 @@ export default function RegrasScreen() {
   }
 
   const kmDia = form.dias_mes && form.km_franquia_mensal
-    ? (Number(form.km_franquia_mensal) / Number(form.dias_mes)).toFixed(1)
+    ? Math.ceil(Number(form.km_franquia_mensal) / Number(form.dias_mes))
     : '—';
 
   const contratoNome = contratos.find(c => c.id === Number(contratoId))?.nome || '';
@@ -151,9 +153,9 @@ export default function RegrasScreen() {
                         <tr key={v.id}>
                           <td style={s.td}>{v.configuracao}</td>
                           <td style={s.td}>
-                            <input type="number" min="0" defaultValue={v.valor_mensal}
+                            <input type="number" min="0" step="0.01" defaultValue={v.valor_mensal}
                               onBlur={e => editarValor(v.id, e.target.value)}
-                              style={{ ...s.input, width: 140, padding: '4px 8px' }} />
+                              style={{ ...s.input, width: 160, padding: '4px 8px' }} />
                           </td>
                           <td style={s.td}>
                             <button style={{ ...s.btnSecondary, color: '#dc2626', borderColor: '#fca5a5', padding: '4px 10px', fontSize: '0.8rem' }}
@@ -171,15 +173,18 @@ export default function RegrasScreen() {
               <form onSubmit={adicionarConfig} style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <div>
                   <label style={s.label}>Configuração</label>
-                  <input required value={novaConfig.configuracao}
+                  <select required value={novaConfig.configuracao}
                     onChange={e => setNovaConfig(n => ({ ...n, configuracao: e.target.value }))}
-                    style={{ ...s.input, width: 220 }} placeholder="Ex: Ônibus 52 lugares" />
+                    style={{ ...s.input, width: 200 }}>
+                    <option value="">Selecione...</option>
+                    {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label style={s.label}>Valor mensal (R$)</label>
-                  <input required type="number" min="0" value={novaConfig.valor_mensal}
+                  <input required type="number" min="0" step="0.01" value={novaConfig.valor_mensal}
                     onChange={e => setNovaConfig(n => ({ ...n, valor_mensal: e.target.value }))}
-                    style={{ ...s.input, width: 160 }} placeholder="Ex: 15000" />
+                    style={{ ...s.input, width: 160 }} placeholder="Ex: 31916,33" />
                 </div>
                 <button style={s.btnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
               </form>
