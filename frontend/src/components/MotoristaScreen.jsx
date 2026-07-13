@@ -119,6 +119,23 @@ export default function MotoristaScreen({ usuario }) {
       });
   }, [formI.veiculo_id]);
 
+  // Auto-preenche KM Final pelo último registro do veículo substituto
+  useEffect(() => {
+    if (!formF.veiculo_troca_id) return;
+    supabase.from('registros').select('km_final')
+      .eq('veiculo_id', Number(formF.veiculo_troca_id))
+      .eq('status', 'completo')
+      .not('km_final', 'is', null)
+      .order('data', { ascending: false })
+      .order('criado_em', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data?.[0]?.km_final != null) {
+          setFormF(f => ({ ...f, km_final: String(data[0].km_final) }));
+        }
+      });
+  }, [formF.veiculo_troca_id]);
+
   const rascunhos = registros.filter(r => r.status === 'rascunho');
   const historico = registros.filter(r => r.status !== 'rascunho');
 
