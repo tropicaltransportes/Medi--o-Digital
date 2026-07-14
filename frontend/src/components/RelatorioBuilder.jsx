@@ -28,7 +28,8 @@ const OPCOES_VIZ = [
   { id: 'heatmap', label: 'Heat Map' },
 ];
 
-const TIPOS_TURNO = ['normal', 'turno extra', 'rodada interna', 'rota', 'manutencao'];
+const TIPOS_TURNO   = ['normal', 'turno extra', 'rodada interna', 'rota', 'manutencao'];
+const TIPOS_VEICULO = ['RODOVIÁRIO', 'SEMI RODOVIÁRIO', 'URBANO', 'MICRO', 'VAN', 'PEQUENO PORTE'];
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES_PT    = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
@@ -42,6 +43,7 @@ const CONFIG_INICIAL = {
   dataFinal: '',
   filtroTipoTurno: '',
   filtroStatus: '',
+  filtroTipoVeiculo: '',
 };
 
 const LS_KEY = 'medicao_relatorios_salvos';
@@ -159,14 +161,18 @@ export default function RelatorioBuilder({ contratos }) {
     setCarregando(true);
     setResultado(null);
 
-    const { data: rotasData } = await supabase.from('rotas').select('id, nome, contrato_id').order('nome');
+    const { data: rotasData } = await supabase.from('rotas').select('id, nome, contrato_id, configuracao').order('nome');
     const { data: veicData }  = await supabase.from('veiculos').select('id, placa').order('placa');
     const rotas    = rotasData || [];
     const veiculos = veicData  || [];
 
-    const rotasContrato = config.contratoId
+    let rotasContrato = config.contratoId
       ? rotas.filter(r => r.contrato_id === Number(config.contratoId))
       : rotas;
+    // Filtro por tipo de veículo (via rotas.configuracao)
+    if (config.filtroTipoVeiculo) {
+      rotasContrato = rotasContrato.filter(r => r.configuracao === config.filtroTipoVeiculo);
+    }
     const rotaIds = rotasContrato.map(r => r.id);
 
     if (config.contratoId && rotaIds.length === 0) {
@@ -319,6 +325,13 @@ export default function RelatorioBuilder({ contratos }) {
             <label style={s.label}>Visualização</label>
             <select value={config.visualizacao} onChange={e => setC('visualizacao', e.target.value)} style={s.input}>
               {OPCOES_VIZ.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={s.label}>Filtrar tipo de veículo</label>
+            <select value={config.filtroTipoVeiculo} onChange={e => setC('filtroTipoVeiculo', e.target.value)} style={s.input}>
+              <option value="">Todos</option>
+              {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div>

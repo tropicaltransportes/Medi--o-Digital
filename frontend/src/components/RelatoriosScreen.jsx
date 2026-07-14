@@ -127,28 +127,30 @@ export default function RelatoriosScreen() {
 
   return (
     <div>
-      {/* Filtros compartilhados */}
-      <section style={s.card}>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <label style={s.label}>Contrato</label>
-            <select value={contratoId} onChange={e => setContratoId(e.target.value)} style={{ ...s.input, minWidth: 220 }}>
-              <option value="">Selecione...</option>
-              {contratos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+      {/* Filtros compartilhados — ocultos no Construtor (tem seus próprios filtros) */}
+      {subAba !== 3 && (
+        <section style={s.card}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <label style={s.label}>Contrato</label>
+              <select value={contratoId} onChange={e => setContratoId(e.target.value)} style={{ ...s.input, minWidth: 220 }}>
+                <option value="">Selecione...</option>
+                {contratos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={s.label}>Mês</label>
+              <select value={mes} onChange={e => setMes(e.target.value)} style={{ ...s.input, minWidth: 160 }}>
+                <option value="">Selecione...</option>
+                {mesesDisponiveis.map(m => <option key={m} value={m}>{formatarMes(m)}</option>)}
+              </select>
+            </div>
+            {contratoId && mes && subAba === 0 && (
+              <button style={s.btnSecondary} onClick={carregarDomFer}>↻ Atualizar</button>
+            )}
           </div>
-          <div>
-            <label style={s.label}>Mês</label>
-            <select value={mes} onChange={e => setMes(e.target.value)} style={{ ...s.input, minWidth: 160 }}>
-              <option value="">Selecione...</option>
-              {mesesDisponiveis.map(m => <option key={m} value={m}>{formatarMes(m)}</option>)}
-            </select>
-          </div>
-          {contratoId && mes && subAba === 0 && (
-            <button style={s.btnSecondary} onClick={carregarDomFer}>↻ Atualizar</button>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Sub-abas */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #e5e7eb' }}>
