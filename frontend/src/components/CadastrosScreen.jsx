@@ -98,7 +98,7 @@ function ContratosSection() {
 function RotasSection() {
   const [lista, setLista] = useState([]);
   const [contratos, setContratos] = useState([]);
-  const [form, setForm] = useState({ contrato_id: '', nome: '' });
+  const [form, setForm] = useState({ contrato_id: '', nome: '', local: '' });
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
@@ -106,14 +106,14 @@ function RotasSection() {
     supabase.from('contratos').select('id, nome').order('nome').then(({ data }) => setContratos(data || []));
   }, []);
   async function carregar() {
-    const { data } = await supabase.from('rotas').select('id, nome, contrato_id, contratos(nome)').order('nome');
+    const { data } = await supabase.from('rotas').select('id, nome, local, contrato_id, contratos(nome)').order('nome');
     setLista(data || []);
   }
   async function adicionar(e) {
     e.preventDefault();
     setSalvando(true);
-    await supabase.from('rotas').insert({ nome: form.nome.trim(), contrato_id: Number(form.contrato_id) });
-    setForm(f => ({ ...f, nome: '' }));
+    await supabase.from('rotas').insert({ nome: form.nome.trim(), local: form.local.trim() || null, contrato_id: Number(form.contrato_id) });
+    setForm(f => ({ ...f, nome: '', local: '' }));
     await carregar();
     setSalvando(false);
   }
@@ -121,6 +121,10 @@ function RotasSection() {
     if (!confirm('Remover esta rota?')) return;
     await supabase.from('rotas').delete().eq('id', id);
     setLista(l => l.filter(x => x.id !== id));
+  }
+  async function salvarLocal(id, local) {
+    await supabase.from('rotas').update({ local: local.trim() || null }).eq('id', id);
+    setLista(l => l.map(x => x.id === id ? { ...x, local: local.trim() || null } : x));
   }
 
   return (
@@ -136,17 +140,29 @@ function RotasSection() {
         </div>
         <div>
           <label style={s.label}>Nome da rota</label>
-          <input required value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} style={{ ...s.input, width: 200 }} placeholder="Ex: M1" />
+          <input required value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} style={{ ...s.input, width: 160 }} placeholder="Ex: M1" />
+        </div>
+        <div>
+          <label style={s.label}>Local</label>
+          <input value={form.local} onChange={e => setForm(f => ({ ...f, local: e.target.value }))} style={{ ...s.input, width: 180 }} placeholder="Ex: PETROLINA" />
         </div>
         <button style={s.btnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
       </form>
       <div style={s.tableWrap}>
         <table style={s.table}>
-          <thead><tr><th style={thS}>Rota</th><th style={thS}>Contrato</th><th style={thS}></th></tr></thead>
+          <thead><tr><th style={thS}>Rota</th><th style={thS}>Local</th><th style={thS}>Contrato</th><th style={thS}></th></tr></thead>
           <tbody>
             {lista.map(r => (
               <tr key={r.id}>
                 <td style={{ ...tdS, fontWeight: 600 }}>{r.nome}</td>
+                <td style={tdS}>
+                  <input
+                    defaultValue={r.local || ''}
+                    onBlur={e => salvarLocal(r.id, e.target.value)}
+                    style={{ ...s.input, width: 160, padding: '3px 8px' }}
+                    placeholder="—"
+                  />
+                </td>
                 <td style={tdS}>{r.contratos?.nome || '—'}</td>
                 <td style={tdS}><button style={btnRed} onClick={() => remover(r.id)}>Remover</button></td>
               </tr>

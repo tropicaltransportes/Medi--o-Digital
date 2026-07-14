@@ -6,9 +6,10 @@ import RegistrosTable from './RegistrosTable.jsx';
 import RegrasScreen from './RegrasScreen.jsx';
 import BoletimScreen from './BoletimScreen.jsx';
 import CadastrosScreen from './CadastrosScreen.jsx';
+import RelatoriosScreen from './RelatoriosScreen.jsx';
 import { s } from '../styles.js';
 
-const ABAS = ['Folhas de Medição', 'Regras de Faturamento', 'Boletim', 'Cadastros'];
+const ABAS = ['Folhas de Medição', 'Regras de Faturamento', 'Boletim', 'Relatórios', 'Cadastros'];
 
 const TURNOS = [
   { value: 'rota', label: 'ROTA' },
@@ -74,6 +75,20 @@ export default function GestorScreen() {
   }
   function contratoNome(r) { return contratoDeRegistro(r)?.nome || '—'; }
   function veiculoDeRegistro(r) { return todosVeiculos.find(x => x.id === r.veiculo_id) || null; }
+
+  // Marca automaticamente como Dom/Feriado todos os registros cujo dia é domingo
+  async function autoMarcarDomingos(folha) {
+    const ids = folha.registros
+      .filter(r => {
+        if (r.domingo_feriado) return false;
+        const d = new Date(r.data + 'T12:00:00');
+        return d.getDay() === 0;
+      })
+      .map(r => r.id);
+    if (!ids.length) return;
+    await supabase.from('registros').update({ domingo_feriado: true }).in('id', ids);
+    setRegistros(prev => prev.map(r => ids.includes(r.id) ? { ...r, domingo_feriado: true } : r));
+  }
 
   // ── Handlers de validação / dom-feriado / edição ─────────────────────
   async function handleValidar(r) {
@@ -239,7 +254,8 @@ export default function GestorScreen() {
 
       {aba === 1 && <RegrasScreen />}
       {aba === 2 && <BoletimScreen />}
-      {aba === 3 && <CadastrosScreen />}
+      {aba === 3 && <RelatoriosScreen />}
+      {aba === 4 && <CadastrosScreen />}
 
       {aba === 0 && (
         <div>
@@ -299,7 +315,10 @@ export default function GestorScreen() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <button style={s.btnSecondary} onClick={() => setAberta(estaAberta ? null : chave)}>
+                    <button style={s.btnSecondary} onClick={() => {
+                      if (!estaAberta) autoMarcarDomingos(folha);
+                      setAberta(estaAberta ? null : chave);
+                    }}>
                       {estaAberta ? 'Fechar' : 'Ver registros'}
                     </button>
                     <button style={s.btnGreen} onClick={() => exportar(folha)}>
