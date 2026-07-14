@@ -24,9 +24,10 @@ const OPCOES_METRICAS = [
 ];
 
 const OPCOES_VIZ = [
-  { id: 'tabela',  label: 'Tabela' },
-  { id: 'heatmap', label: 'Heat Map' },
-  { id: 'lista',   label: 'Lista Detalhada' },
+  { id: 'tabela',    label: 'Tabela' },
+  { id: 'heatmap',   label: 'Heat Map' },
+  { id: 'lista',     label: 'Lista Detalhada' },
+  { id: 'odometro',  label: 'KM por Veículo (Odômetro)' },
 ];
 
 const COLUNAS_LISTA = [
@@ -157,7 +158,9 @@ export default function RelatorioBuilder({ contratos }) {
   const [carregando, setCarregando] = useState(false);
   const [erro,       setErro]      = useState('');
 
-  const isLista = config.visualizacao === 'lista';
+  const isLista     = config.visualizacao === 'lista';
+  const isOdometro  = config.visualizacao === 'odometro';
+  const modoSimples = isLista || isOdometro; // modos que não usam colunas/métrica
 
   function setC(field, val) {
     setConfig(prev => ({ ...prev, [field]: val }));
@@ -224,6 +227,68 @@ export default function RelatorioBuilder({ contratos }) {
     const { data: regs, error } = await query;
     if (error) {
       setErro('Erro ao buscar dados: ' + error.message);
+      setCarregando(false);
+      return;
+    }
+
+    // ── MODO ODÔMETRO ──
+    if (isOdometro) {
+      // Força validado = true independentemente dos filtros
+      let qOdo = supabase.from('registros')
+        .select('id, rota_id, veiculo_id, data, horario_saida, km_inicial, km_final, tipo_turno')
+        .gte('data', config.dataInicial)
+        .lte('data', config.dataFinal)
+        .eq('validado', true);
+      if (rotaIds.length > 0) qOdo = qOdo.in('rota_id', rotaIds);
+      else if (config.contratoId || config.filtroTipoVeiculo) {
+        // Filtro ativo mas sem rotas → resultado vazio
+        setResultado({ tipo: 'odometro', linhas: [] });
+        setCarregando(false);
+        return;
+      }
+      const { data: regsVal, error: errVal } = await qOdo;
+
+      if (errVal) { setErro('Erro: ' + errVal.message); setCarregando(false); return; }
+
+      const regsF = config.filtroTipoTurno
+        ? (regsVal || []).filter(r => r.tipo_turno === config.filtroTipoTurno)
+        : (regsVal || []);
+
+      // Agrupa por rota_id + veiculo_id
+      const gruposMap = new Map();
+      for (const r of regsF) {
+        const k = `${r.rota_id}_${r.veiculo_id}`;
+        if (!gruposMap.has(k)) gruposMap.set(k, { rota_id: r.rota_id, veiculo_id: r.veiculo_id, regs: [] });
+        gruposMap.get(k).regs.push(r);
+      }
+
+      const linhas = [];
+      for (const g of gruposMap.values()) {
+        // Ordena por data + horário para garantir ordem cronológica
+        g.regs.sort((a, b) => (a.data + (a.horario_saida || '')).localeCompare(b.data + (b.horario_saida || '')));
+        const primeiro = g.regs[0];
+        const ultimo   = g.regs[g.regs.length - 1];
+        const kmIni    = Number(primeiro.km_inicial) || null;
+        const kmFin    = ultimo.km_final != null ? Number(ultimo.km_final) : null;
+        const kmTotal  = kmIni != null && kmFin != null ? Math.max(0, kmFin - kmIni) : null;
+        linhas.push({
+          rota_id:      g.rota_id,
+          veiculo_id:   g.veiculo_id,
+          rotaNome:     todasRotas.find(r => r.id === g.rota_id)?.nome || `#${g.rota_id}`,
+          veiculoPlaca: veiculos.find(v => v.id === g.veiculo_id)?.placa || `#${g.veiculo_id}`,
+          kmIni, kmFin, kmTotal,
+          nRegs:        g.regs.length,
+          dataIni:      primeiro.data,
+          dataFin:      ultimo.data,
+        });
+      }
+
+      linhas.sort((a, b) => {
+        const cmp = a.rotaNome.localeCompare(b.rotaNome);
+        return cmp !== 0 ? cmp : a.veiculoPlaca.localeCompare(b.veiculoPlaca);
+      });
+
+      setResultado({ tipo: 'odometro', linhas });
       setCarregando(false);
       return;
     }
@@ -355,13 +420,15 @@ export default function RelatorioBuilder({ contratos }) {
 
         {/* Dimensões, visualização e filtros */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px 16px' }}>
-          <div>
-            <label style={s.label}>{isLista ? 'Agrupar por' : 'Agrupar linhas por'}</label>
-            <select value={config.linhas} onChange={e => setC('linhas', e.target.value)} style={s.input}>
-              {OPCOES_LINHAS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </select>
-          </div>
-          {!isLista && (
+          {!isOdometro && (
+            <div>
+              <label style={s.label}>{isLista ? 'Agrupar por' : 'Agrupar linhas por'}</label>
+              <select value={config.linhas} onChange={e => setC('linhas', e.target.value)} style={s.input}>
+                {OPCOES_LINHAS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+              </select>
+            </div>
+          )}
+          {!modoSimples && (
             <div>
               <label style={s.label}>Agrupar colunas por</label>
               <select value={config.colunas} onChange={e => setC('colunas', e.target.value)} style={s.input}>
@@ -369,7 +436,7 @@ export default function RelatorioBuilder({ contratos }) {
               </select>
             </div>
           )}
-          {!isLista && (
+          {!modoSimples && (
             <div>
               <label style={s.label}>Métrica</label>
               <select value={config.metrica} onChange={e => setC('metrica', e.target.value)} style={s.input}>
@@ -397,14 +464,23 @@ export default function RelatorioBuilder({ contratos }) {
               {TIPOS_TURNO.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-          <div>
-            <label style={s.label}>Filtrar status</label>
-            <select value={config.filtroStatus} onChange={e => setC('filtroStatus', e.target.value)} style={s.input}>
-              <option value="">Todos</option>
-              <option value="completo">Completo</option>
-              <option value="rascunho">Rascunho</option>
-            </select>
-          </div>
+          {!isOdometro && (
+            <div>
+              <label style={s.label}>Filtrar status</label>
+              <select value={config.filtroStatus} onChange={e => setC('filtroStatus', e.target.value)} style={s.input}>
+                <option value="">Todos</option>
+                <option value="completo">Completo</option>
+                <option value="rascunho">Rascunho</option>
+              </select>
+            </div>
+          )}
+          {isOdometro && (
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, padding: '6px 10px', fontSize: '0.74rem', color: '#15803d', fontWeight: 600 }}>
+                ✓ Somente registros validados
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Seletor de colunas para Lista Detalhada */}
@@ -461,6 +537,10 @@ export default function RelatorioBuilder({ contratos }) {
         </div>
       )}
 
+      {resultado && resultado.tipo === 'odometro' && (
+        <ResultadoOdometro resultado={resultado} fmtNum={fmtNum} config={config} />
+      )}
+
       {resultado && resultado.tipo === 'lista' && (
         <ResultadoLista resultado={resultado} config={config} fmtNum={fmtNum} calcKm={calcKm} calcHoras={calcHoras} />
       )}
@@ -468,6 +548,114 @@ export default function RelatorioBuilder({ contratos }) {
       {resultado && resultado.tipo === 'pivot' && (
         <ResultadoPivot resultado={resultado} config={config} isHeat={isHeat} />
       )}
+    </div>
+  );
+}
+
+// ── ODÔMETRO ─────────────────────────────────────────────────────────────────
+
+function ResultadoOdometro({ resultado, fmtNum, config }) {
+  const { linhas } = resultado;
+
+  if (!linhas.length) return (
+    <div style={{ ...s.card, textAlign: 'center', color: '#6b7280', padding: '32px 24px' }}>
+      Nenhum registro validado encontrado para os filtros selecionados.
+    </div>
+  );
+
+  const th = {
+    padding: '6px 10px', fontSize: '0.72rem', fontWeight: 700,
+    background: '#1a5276', color: '#fff', border: '1px solid #154360',
+    whiteSpace: 'nowrap',
+  };
+  const thR = { ...th, textAlign: 'right' };
+  const td0 = { padding: '5px 10px', fontSize: '0.8rem', border: '1px solid #e5e7eb', whiteSpace: 'nowrap' };
+  const tdR = { ...td0, textAlign: 'right' };
+
+  // Agrupa linhas por rota
+  const rotasMap = new Map();
+  for (const l of linhas) {
+    if (!rotasMap.has(l.rota_id)) rotasMap.set(l.rota_id, { nome: l.rotaNome, linhas: [] });
+    rotasMap.get(l.rota_id).linhas.push(l);
+  }
+  const rotas = [...rotasMap.values()];
+  const totalGeral = linhas.reduce((acc, l) => acc + (l.kmTotal || 0), 0);
+
+  return (
+    <div style={{ marginTop: 8, overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24 }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+        <thead>
+          <tr>
+            <th style={th}>ROTA</th>
+            <th style={th}>VEÍCULO</th>
+            <th style={thR}>1º KM (ini)</th>
+            <th style={thR}>Último KM (fin)</th>
+            <th style={{ ...thR, background: '#0e4d3a' }}>KM TOTAL</th>
+            <th style={{ ...th, color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem' }}>PERÍODO</th>
+            <th style={{ ...th, color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem' }}>REGISTROS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rotas.map((rota, ri) => {
+            const subtotal = rota.linhas.reduce((acc, l) => acc + (l.kmTotal || 0), 0);
+            return (
+              <React.Fragment key={ri}>
+                {rota.linhas.map((l, li) => {
+                  const par = li % 2 === 0;
+                  const bg  = par ? '#fff' : '#f8fafc';
+                  const semFim = l.kmFin == null;
+                  return (
+                    <tr key={`${l.rota_id}_${l.veiculo_id}`}>
+                      <td style={{ ...td0, background: bg, fontWeight: li === 0 ? 600 : 400, color: li === 0 ? '#1a5276' : 'inherit' }}>
+                        {li === 0 ? l.rotaNome : ''}
+                      </td>
+                      <td style={{ ...td0, background: bg, fontWeight: 600 }}>{l.veiculoPlaca}</td>
+                      <td style={{ ...tdR, background: bg }}>{l.kmIni != null ? fmtNum(l.kmIni) : '—'}</td>
+                      <td style={{ ...tdR, background: bg, color: semFim ? '#dc2626' : 'inherit' }}>
+                        {semFim ? '(sem km final)' : fmtNum(l.kmFin)}
+                      </td>
+                      <td style={{ ...tdR, background: bg, fontWeight: 700, color: l.kmTotal != null ? '#15803d' : '#9ca3af' }}>
+                        {l.kmTotal != null ? fmtNum(l.kmTotal) : '—'}
+                      </td>
+                      <td style={{ ...td0, background: bg, fontSize: '0.72rem', color: '#6b7280' }}>
+                        {l.dataIni === l.dataFin ? l.dataIni : `${l.dataIni} → ${l.dataFin}`}
+                      </td>
+                      <td style={{ ...tdR, background: bg, fontSize: '0.72rem', color: '#6b7280' }}>{l.nRegs}</td>
+                    </tr>
+                  );
+                })}
+                {/* Subtotal por rota */}
+                <tr style={{ background: '#f0fdf4' }}>
+                  <td style={{ ...td0, fontWeight: 700, color: '#15803d', background: '#f0fdf4' }}>
+                    Subtotal {rota.nome}
+                  </td>
+                  <td style={{ ...td0, background: '#f0fdf4' }} colSpan={2}></td>
+                  <td style={{ ...tdR, background: '#f0fdf4', fontWeight: 700, color: '#15803d', fontSize: '0.72rem' }}>
+                    {rota.linhas.length} veículo{rota.linhas.length !== 1 ? 's' : ''}
+                  </td>
+                  <td style={{ ...tdR, background: '#f0fdf4', fontWeight: 700, color: '#15803d', fontSize: '0.9rem' }}>
+                    {fmtNum(subtotal)} km
+                  </td>
+                  <td style={{ ...td0, background: '#f0fdf4' }} colSpan={2}></td>
+                </tr>
+              </React.Fragment>
+            );
+          })}
+          {/* Total geral */}
+          <tr style={{ background: '#dbeafe' }}>
+            <td style={{ ...td0, fontWeight: 700, color: '#1a5276', background: '#dbeafe' }} colSpan={4}>
+              TOTAL GERAL
+            </td>
+            <td style={{ ...tdR, background: '#a7f3d0', color: '#065f46', fontWeight: 700, fontSize: '1rem' }}>
+              {fmtNum(totalGeral)} km
+            </td>
+            <td style={{ ...td0, background: '#dbeafe', fontSize: '0.72rem', color: '#6b7280' }}>
+              {linhas.reduce((acc, l) => acc + l.nRegs, 0)} registros validados
+            </td>
+            <td style={{ ...td0, background: '#dbeafe' }}></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
