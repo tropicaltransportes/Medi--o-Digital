@@ -14,6 +14,40 @@ const tdTotR = { ...tdTot, textAlign: 'right' };
 
 const TIPOS_VEICULO = ['RODOVIÁRIO', 'SEMI RODOVIÁRIO', 'URBANO', 'MICRO', 'VAN', 'PEQUENO PORTE'];
 
+function QuantCell({ value, autoValue, onChange, onReset }) {
+  const overridden = value !== autoValue;
+  return (
+    <td style={{ ...tdR, padding: '2px 4px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
+        <input
+          type="number"
+          value={value}
+          min={0}
+          onChange={e => onChange(Math.max(0, Number(e.target.value) || 0))}
+          style={{
+            width: 52, textAlign: 'right', fontSize: '0.78rem',
+            border: '1px solid transparent', borderRadius: 3, padding: '2px 4px',
+            background: 'transparent', outline: 'none',
+            fontWeight: value > 0 ? 700 : 400,
+            color: overridden ? '#1d4ed8' : 'inherit',
+          }}
+          onFocus={e => { e.target.style.border = '1px solid #93c5fd'; e.target.style.background = '#eff6ff'; }}
+          onBlur={e => { e.target.style.border = '1px solid transparent'; e.target.style.background = 'transparent'; }}
+        />
+        {overridden && (
+          <button
+            onClick={onReset}
+            title={`Restaurar automático (${autoValue})`}
+            style={{ fontSize: '0.65rem', padding: '1px 4px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}
+          >
+            ↺
+          </button>
+        )}
+      </div>
+    </td>
+  );
+}
+
 export default function BoletimScreen() {
   const [contratos, setContratos] = useState([]);
   const [contratoId, setContratoId] = useState('');
@@ -23,9 +57,12 @@ export default function BoletimScreen() {
   const [regra, setRegra] = useState(null);
   const [valoresVeiculo, setValoresVeiculo] = useState([]);
   const [carregando, setCarregando] = useState(false);
-  // configuracao por rota_id (sobrescreve o valor do banco para esta sessão + salva)
   const [configRotas, setConfigRotas] = useState({});
   const [salvandoConfig, setSalvandoConfig] = useState({});
+  // Ajustes manuais de quantidade por rota
+  const [ajustes, setAjustes] = useState({});
+  // ISS editável (%)
+  const [issPercent, setIssPercent] = useState(5);
 
   const mesesDisponiveis = useMemo(() => {
     const lista = [];
@@ -49,6 +86,7 @@ export default function BoletimScreen() {
 
   async function carregar() {
     setCarregando(true);
+    setAjustes({});   // limpa overrides ao recarregar
     const cid = Number(contratoId);
 
     const [{ data: rotasData }, { data: regraData }] = await Promise.all([
@@ -92,41 +130,58 @@ export default function BoletimScreen() {
     salvarConfigRota(rotaId, novaConfig);
   }
 
+  function setAjuste(rotaId, campo, valor) {
+    setAjustes(prev => ({
+      ...prev,
+      [rotaId]: { ...(prev[rotaId] || {}), [campo]: valor },
+    }));
+  }
+  function resetAjuste(rotaId, campo) {
+    setAjustes(prev => {
+      const novo = { ...(prev[rotaId] || {}) };
+      delete novo[campo];
+      return { ...prev, [rotaId]: novo };
+    });
+  }
+
   const linhas = useMemo(() => {
     if (!registros.length) return [];
 
-    // Agrupa SOMENTE por rota_id
     const grupos = new Map();
     for (const r of registros) {
-      if (!grupos.has(r.rota_id)) {
-        grupos.set(r.rota_id, { rota_id: r.rota_id, regs: [] });
-      }
+      if (!grupos.has(r.rota_id)) grupos.set(r.rota_id, { rota_id: r.rota_id, regs: [] });
       grupos.get(r.rota_id).regs.push(r);
     }
 
     return Array.from(grupos.values()).map(g => {
-      const rota = rotas.find(x => x.id === g.rota_id);
+      const rota       = rotas.find(x => x.id === g.rota_id);
       const configAtual = configRotas[g.rota_id] || '';
-      const billing = valoresVeiculo.find(v => v.configuracao === configAtual);
+      const billing    = valoresVeiculo.find(v => v.configuracao === configAtual);
 
-      const kmTotal = g.regs.reduce((acc, r) => acc + kmRodados(r), 0);
+      const kmTotal    = g.regs.reduce((acc, r) => acc + kmRodados(r), 0);
       const kmFranquia = regra?.km_franquia_mensal || 0;
-      const kmExtra = Math.max(0, kmTotal - kmFranquia);
 
       const tipoEfetivo = r => r.domingo_feriado ? 'normal' : r.tipo_turno;
-      const tnQuant = g.regs.filter(r => tipoEfetivo(r) === 'normal').length;
-      const teQuant = g.regs.filter(r => tipoEfetivo(r) === 'turno extra').length;
+      const tnQuantAuto  = g.regs.filter(r => tipoEfetivo(r) === 'normal').length;
+      const teQuantAuto  = g.regs.filter(r => tipoEfetivo(r) === 'turno extra').length;
+      const kmExtraAuto  = Math.max(0, kmTotal - kmFranquia);
 
-      const valorFixo   = billing?.valor_mensal || 0;
-      const tnValor     = billing?.valor_turno_normal || 0;
-      const teValor     = billing?.valor_turno_extra || 0;
-      const kmExValor   = billing?.valor_km_extra_turno_extra || 0;
+      // Aplica overrides manuais se existirem
+      const adj       = ajustes[g.rota_id] || {};
+      const tnQuant   = adj.tnQuant  ?? tnQuantAuto;
+      const teQuant   = adj.teQuant  ?? teQuantAuto;
+      const kmExtra   = adj.kmExtra  ?? kmExtraAuto;
 
-      const tnTotal     = tnQuant * tnValor;
-      const teTotal     = teQuant * teValor;
-      const kmExTotal   = kmExtra * kmExValor;
-      const valorBruto  = valorFixo + tnTotal + teTotal + kmExTotal;
-      const iss         = valorBruto * 0.05;
+      const valorFixo  = billing?.valor_mensal || 0;
+      const tnValor    = billing?.valor_turno_normal || 0;
+      const teValor    = billing?.valor_turno_extra || 0;
+      const kmExValor  = billing?.valor_km_extra_turno_extra || 0;
+
+      const tnTotal    = tnQuant * tnValor;
+      const teTotal    = teQuant * teValor;
+      const kmExTotal  = kmExtra * kmExValor;
+      const valorBruto = valorFixo + tnTotal + teTotal + kmExTotal;
+      const iss        = valorBruto * (issPercent / 100);
       const valorLiquido = valorBruto - iss;
 
       return {
@@ -134,13 +189,13 @@ export default function BoletimScreen() {
         rotaNome: rota?.nome || '—',
         configAtual,
         semConfig: !configAtual || !billing,
-        valorFixo, tnValor, tnQuant, tnTotal,
-        teValor, teQuant, teTotal,
-        kmExValor, kmExtra, kmExTotal,
+        valorFixo, tnValor, tnQuant, tnQuantAuto, tnTotal,
+        teValor, teQuant, teQuantAuto, teTotal,
+        kmExValor, kmExtra, kmExtraAuto, kmExTotal,
         valorBruto, iss, valorLiquido,
       };
     }).sort((a, b) => a.rotaNome.localeCompare(b.rotaNome));
-  }, [registros, rotas, valoresVeiculo, regra, configRotas]);
+  }, [registros, rotas, valoresVeiculo, regra, configRotas, ajustes, issPercent]);
 
   const tot = useMemo(() => linhas.reduce((acc, l) => ({
     valorFixo:    acc.valorFixo    + l.valorFixo,
@@ -155,9 +210,12 @@ export default function BoletimScreen() {
     valorLiquido: acc.valorLiquido + l.valorLiquido,
   }), { valorFixo:0,tnQuant:0,tnTotal:0,teQuant:0,teTotal:0,kmExtra:0,kmExTotal:0,valorBruto:0,iss:0,valorLiquido:0 }), [linhas]);
 
-  const brutoRotas  = linhas.reduce((a, l) => a + l.valorFixo, 0);
-  const brutoExtras = linhas.reduce((a, l) => a + l.tnTotal + l.teTotal + l.kmExTotal, 0);
+  const brutoRotas   = linhas.reduce((a, l) => a + l.valorFixo, 0);
+  const brutoExtras  = linhas.reduce((a, l) => a + l.tnTotal + l.teTotal + l.kmExTotal, 0);
+  const issRotas     = brutoRotas  * (issPercent / 100);
+  const issExtras    = brutoExtras * (issPercent / 100);
   const contratoNome = contratos.find(c => c.id === Number(contratoId))?.nome || '';
+  const temAjustes   = Object.keys(ajustes).some(k => Object.keys(ajustes[k]).length > 0);
 
   return (
     <div>
@@ -178,7 +236,20 @@ export default function BoletimScreen() {
               {mesesDisponiveis.map(m => <option key={m} value={m}>{formatarMes(m)}</option>)}
             </select>
           </div>
-          {contratoId && mes && <button style={s.btnSecondary} onClick={carregar}>↻ Atualizar</button>}
+          {contratoId && mes && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button style={s.btnSecondary} onClick={carregar}>↻ Atualizar</button>
+              {temAjustes && (
+                <button
+                  style={{ ...s.btnSecondary, color: '#b45309', borderColor: '#fcd34d', background: '#fffbeb', fontSize: '0.78rem' }}
+                  onClick={() => setAjustes({})}
+                  title="Restaurar todas as quantidades para os valores automáticos"
+                >
+                  ↺ Restaurar automático
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -210,7 +281,23 @@ export default function BoletimScreen() {
                   <th style={{ ...th0, textAlign: 'center' }} colSpan={3}>TURNO EXTRA</th>
                   <th style={{ ...th1, textAlign: 'center' }} colSpan={3}>KM EXTRA T. EXTRA</th>
                   <th style={th0} rowSpan={2}>VALOR BRUTO</th>
-                  <th style={th0} rowSpan={2}>ISS 5%</th>
+                  <th style={th0} rowSpan={2}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                      ISS
+                      <input
+                        type="number"
+                        value={issPercent}
+                        onChange={e => setIssPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                        min={0} max={100} step={0.5}
+                        style={{
+                          width: 38, textAlign: 'center', fontSize: '0.72rem',
+                          border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3, padding: '1px 2px',
+                          background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 700,
+                        }}
+                      />
+                      %
+                    </div>
+                  </th>
                   <th style={th0} rowSpan={2}>VALOR LÍQUIDO</th>
                 </tr>
                 <tr>
@@ -242,13 +329,19 @@ export default function BoletimScreen() {
                     </td>
                     <td style={tdR}>{fmt(l.valorFixo)}</td>
                     <td style={tdR}>{fmt(l.tnValor)}</td>
-                    <td style={{ ...tdR, fontWeight: l.tnQuant > 0 ? 700 : 400 }}>{l.tnQuant}</td>
+                    <QuantCell value={l.tnQuant} autoValue={l.tnQuantAuto}
+                      onChange={v => setAjuste(l.rota_id, 'tnQuant', v)}
+                      onReset={() => resetAjuste(l.rota_id, 'tnQuant')} />
                     <td style={tdR}>{fmt(l.tnTotal)}</td>
                     <td style={tdR}>{fmt(l.teValor)}</td>
-                    <td style={{ ...tdR, fontWeight: l.teQuant > 0 ? 700 : 400 }}>{l.teQuant}</td>
+                    <QuantCell value={l.teQuant} autoValue={l.teQuantAuto}
+                      onChange={v => setAjuste(l.rota_id, 'teQuant', v)}
+                      onReset={() => resetAjuste(l.rota_id, 'teQuant')} />
                     <td style={tdR}>{fmt(l.teTotal)}</td>
                     <td style={tdR}>{fmt(l.kmExValor)}</td>
-                    <td style={{ ...tdR, fontWeight: l.kmExtra > 0 ? 700 : 400 }}>{l.kmExtra}</td>
+                    <QuantCell value={l.kmExtra} autoValue={l.kmExtraAuto}
+                      onChange={v => setAjuste(l.rota_id, 'kmExtra', v)}
+                      onReset={() => resetAjuste(l.rota_id, 'kmExtra')} />
                     <td style={tdR}>{fmt(l.kmExTotal)}</td>
                     <td style={{ ...tdR, fontWeight: 700 }}>{fmt(l.valorBruto)}</td>
                     <td style={tdR}>{fmt(l.iss)}</td>
@@ -282,15 +375,15 @@ export default function BoletimScreen() {
                 <tr>
                   <th style={th0}>ITEM</th>
                   <th style={th0}>VALOR BRUTO</th>
-                  <th style={th0}>ISS 5%</th>
+                  <th style={th0}>ISS {issPercent}%</th>
                   <th style={th0}>VALOR LÍQUIDO</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  ['ROTAS (fixo)', brutoRotas, brutoRotas * 0.05, brutoRotas * 0.95],
-                  ['EXTRAS (turnos + km)', brutoExtras, brutoExtras * 0.05, brutoExtras * 0.95],
-                  ['TOTAL', tot.valorBruto, tot.iss, tot.valorLiquido],
+                  ['ROTAS (fixo)',        brutoRotas,       issRotas,   brutoRotas  - issRotas],
+                  ['EXTRAS (turnos + km)', brutoExtras,     issExtras,  brutoExtras - issExtras],
+                  ['TOTAL',              tot.valorBruto,    tot.iss,    tot.valorLiquido],
                 ].map(([label, bruto, iss, liq], i) => (
                   <tr key={i} style={{ background: i === 2 ? '#f0fdf4' : i % 2 === 0 ? '#fff' : '#f9fafb' }}>
                     <td style={i === 2 ? tdTot : td0}>{label}</td>
