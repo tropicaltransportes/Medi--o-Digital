@@ -7,7 +7,7 @@ import RegrasScreen from './RegrasScreen.jsx';
 import BoletimScreen from './BoletimScreen.jsx';
 import CadastrosScreen from './CadastrosScreen.jsx';
 import RelatoriosScreen from './RelatoriosScreen.jsx';
-import { s } from '../styles.js';
+import { s, C } from '../styles.js';
 
 const ABAS = ['Folhas de Medição', 'Regras de Faturamento', 'Boletim', 'Relatórios', 'Cadastros'];
 
@@ -238,14 +238,16 @@ export default function GestorScreen() {
   return (
     <div>
       {/* Abas */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e5e7eb' }}>
+      <div style={{ display: 'flex', gap: 2, marginBottom: 20, borderBottom: `2px solid ${C.border}` }}>
         {ABAS.map((nome, i) => (
           <button key={i} onClick={() => setAba(i)} style={{
-            padding: '8px 20px', border: 'none', background: 'none', cursor: 'pointer',
-            fontWeight: 600, fontSize: '0.9rem',
-            color: aba === i ? '#2563eb' : '#6b7280',
-            borderBottom: aba === i ? '2px solid #2563eb' : '2px solid transparent',
+            padding: '8px 18px', border: 'none', background: 'none', cursor: 'pointer',
+            fontWeight: aba === i ? 600 : 500, fontSize: '0.875rem',
+            color: aba === i ? C.accent : C.muted,
+            borderBottom: aba === i ? `2px solid ${C.accent}` : '2px solid transparent',
             marginBottom: -2,
+            letterSpacing: '0.01em',
+            transition: 'color 0.15s',
           }}>
             {nome}
           </button>
@@ -345,14 +347,14 @@ export default function GestorScreen() {
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center',
                           justifyContent: 'space-between', cursor: 'pointer',
-                          background: '#f1f5f9', border: 'none',
-                          borderLeft: '3px solid #2563eb',
-                          padding: '7px 14px', borderRadius: '0 4px 4px 0',
+                          background: C.accentSoft, border: 'none',
+                          borderLeft: `3px solid ${C.accent}`,
+                          padding: '7px 14px', borderRadius: '0 6px 6px 0',
                           textAlign: 'left',
                         }}
                       >
-                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e3a5f', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: '0.65rem', color: '#2563eb' }}>{rotaOpen ? '▼' : '▶'}</span>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: C.accentDark, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: '0.65rem', color: C.accent }}>{rotaOpen ? '▼' : '▶'}</span>
                           {rota?.nome || 'Sem rota'}
                         </span>
                         <span style={{ fontSize: '0.78rem', color: '#64748b' }}>

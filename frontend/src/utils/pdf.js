@@ -35,7 +35,8 @@ export async function exportPDF(element, filename = 'relatorio.pdf', landscape =
 }
 
 export const btnPDF = {
-  padding: '5px 12px', fontSize: '0.78rem', fontWeight: 600,
-  background: '#dc2626', color: '#fff', border: 'none',
+  padding: '5px 12px', fontSize: '0.75rem', fontWeight: 600,
+  background: '#5D52D1', color: '#fff', border: 'none',
   borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+  letterSpacing: '0.02em',
 };

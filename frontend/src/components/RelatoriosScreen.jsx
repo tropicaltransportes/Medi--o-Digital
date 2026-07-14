@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { formatarMes } from '../storage.js';
-import { s } from '../styles.js';
+import { s, C } from '../styles.js';
 import { exportPDF, btnPDF } from '../utils/pdf.js';
 import RelatorioTurnoExtra from './RelatorioTurnoExtra.jsx';
 import RelatorioTurnosRealizados from './RelatorioTurnosRealizados.jsx';
@@ -27,14 +27,14 @@ function fmtColData(dateStr) {
   return { dia: `${String(d.getDate()).padStart(2,'0')}/${mes[d.getMonth()]}`, tipo: DIAS_PT[d.getDay()] };
 }
 
-const thH    = { padding: '5px 8px', fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', background: '#1a5276', color: '#fff', border: '1px solid #154360', textAlign: 'center' };
-const thHdom = { ...thH, background: '#d4ac0d', color: '#111' };
-const thHfer = { ...thH, background: '#e59866', color: '#111' };
-const td0    = { padding: '4px 8px', fontSize: '0.78rem', border: '1px solid #d5d8dc', whiteSpace: 'nowrap' };
+const thH    = { padding: '5px 8px', fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap', background: '#2D2A6E', color: '#fff', border: '1px solid #231F5C', textAlign: 'center', letterSpacing: '0.03em' };
+const thHdom = { ...thH, background: '#b45309', color: '#fff' };
+const thHfer = { ...thH, background: '#c2410c', color: '#fff' };
+const td0    = { padding: '4px 8px', fontSize: '0.78rem', border: '1px solid #E3E0F5', whiteSpace: 'nowrap' };
 const tdC    = { ...td0, textAlign: 'center', fontWeight: 600 };
-const tdTot  = { ...tdC, background: '#d6eaf8', fontWeight: 700 };
-const tdRotaNome = { ...td0, fontWeight: 700, background: '#eafaf1' };
-const tdLocal    = { ...td0, color: '#555', background: '#eafaf1' };
+const tdTot  = { ...tdC, background: '#EDEAFF', fontWeight: 700, color: '#3B3180' };
+const tdRotaNome = { ...td0, fontWeight: 700, background: '#F5F4FB' };
+const tdLocal    = { ...td0, color: '#7877A0', background: '#F5F4FB' };
 
 export default function RelatoriosScreen() {
   const domFerRef = useRef(null);
@@ -120,11 +120,12 @@ export default function RelatoriosScreen() {
   const totalGeral   = colunas.reduce((acc, col) => acc + (totaisColunas[col] || 0), 0);
 
   const subAbaStyle = (i) => ({
-    padding: '6px 18px', border: 'none', background: 'none', cursor: 'pointer',
-    fontWeight: 600, fontSize: '0.85rem',
-    color: subAba === i ? '#2563eb' : '#6b7280',
-    borderBottom: subAba === i ? '2px solid #2563eb' : '2px solid transparent',
+    padding: '6px 16px', border: 'none', background: 'none', cursor: 'pointer',
+    fontWeight: subAba === i ? 600 : 500, fontSize: '0.83rem',
+    color: subAba === i ? C.accent : C.muted,
+    borderBottom: subAba === i ? `2px solid ${C.accent}` : '2px solid transparent',
     marginBottom: -1,
+    letterSpacing: '0.01em',
   });
 
   return (
@@ -181,15 +182,15 @@ export default function RelatoriosScreen() {
           {!carregando && rotas.length > 0 && (
             <>
               <div ref={domFerRef}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1a5276', color: '#fff', borderRadius: '8px 8px 0 0', padding: '10px 16px', fontWeight: 700, fontSize: '0.95rem', marginTop: 8 }}>
-                <span>CONTROLE DE TURNO NORMAL (DOMINGOS E FERIADOS) — {contratoNome.toUpperCase()}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#2D2A6E', color: '#fff', borderRadius: '10px 10px 0 0', padding: '10px 16px', fontWeight: 700, fontSize: '0.88rem', marginTop: 8, letterSpacing: '0.03em' }}>
+                <span>CONTROLE DE TURNO NORMAL — DOMINGOS E FERIADOS · {contratoNome.toUpperCase()}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontWeight: 400, opacity: 0.85 }}>{formatarMes(mes).toUpperCase()}</span>
-                  <button data-pdf-hide style={{ ...btnPDF, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => exportPDF(domFerRef.current, `dom-feriados-${mes}.pdf`)}>⬇ PDF</button>
+                  <span style={{ fontWeight: 400, opacity: 0.7, fontSize: '0.8rem' }}>{formatarMes(mes).toUpperCase()}</span>
+                  <button data-pdf-hide style={{ ...btnPDF, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 6 }} onClick={() => exportPDF(domFerRef.current, `dom-feriados-${mes}.pdf`)}>⬇ PDF</button>
                 </div>
               </div>
 
-              <div style={{ overflowX: 'auto', border: '1px solid #154360', borderTop: 0, borderRadius: '0 0 8px 8px', marginBottom: 24 }}>
+              <div style={{ overflowX: 'auto', border: '1px solid #231F5C', borderTop: 0, borderRadius: '0 0 10px 10px', marginBottom: 24 }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                   <thead>
                     <tr>
@@ -204,13 +205,13 @@ export default function RelatoriosScreen() {
                           </th>
                         );
                       })}
-                      <th style={{ ...thH, background: '#117a65' }}>TOTAL</th>
+                      <th style={{ ...thH, background: '#166534' }}>TOTAL</th>
                     </tr>
                     <tr>
                       <th style={{ ...thH, fontSize: '0.65rem' }}>NOME</th>
                       <th style={{ ...thH, fontSize: '0.65rem' }}>LOCAL</th>
                       {colunas.map(col => <th key={col} style={{ ...thH, fontSize: '0.6rem', opacity: 0.6 }}></th>)}
-                      <th style={{ ...thH, background: '#117a65' }}></th>
+                      <th style={{ ...thH, background: '#166534' }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -239,7 +240,7 @@ export default function RelatoriosScreen() {
                           {totaisColunas[col] > 0 ? totaisColunas[col] : '—'}
                         </td>
                       ))}
-                      <td style={{ ...tdTot, background: '#a9cce3', fontSize: '0.9rem' }}>{totalGeral > 0 ? totalGeral : '—'}</td>
+                      <td style={{ ...tdTot, background: '#C7C3FF', color: '#1E1B4B', fontSize: '0.9rem' }}>{totalGeral > 0 ? totalGeral : '—'}</td>
                     </tr>
                   </tbody>
                 </table>

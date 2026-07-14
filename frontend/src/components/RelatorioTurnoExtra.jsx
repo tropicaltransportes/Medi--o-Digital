@@ -27,16 +27,16 @@ function fmtDia(dateStr) {
 }
 
 function cellBg(count, isDomFer, par) {
-  if (count >= 3) return '#1d4ed8';
-  if (count === 2) return '#60a5fa';
-  if (count === 1) return '#dbeafe';
+  if (count >= 3) return '#3B3180';
+  if (count === 2) return '#7B6FE8';
+  if (count === 1) return '#EDEAFF';
   if (isDomFer)    return '#fff7ed';
-  return par ? '#fff' : '#f8fafc';
+  return par ? '#fff' : '#F9F8FE';
 }
 function cellColor(count) {
   if (count >= 3) return '#fff';
-  if (count >= 1) return '#1e40af';
-  return '#6b7280';
+  if (count >= 1) return '#2D2A6E';
+  return '#9ca3af';
 }
 
 const W_NOME  = 140;
@@ -45,18 +45,18 @@ const W_DIA   = 44;
 
 const thBase = {
   padding: '4px 4px', fontSize: '0.65rem', fontWeight: 700,
-  background: '#1e3a5f', color: '#fff', border: '1px solid rgba(255,255,255,0.15)',
-  whiteSpace: 'nowrap', textAlign: 'center',
+  background: '#2D2A6E', color: '#fff', border: '1px solid rgba(255,255,255,0.12)',
+  whiteSpace: 'nowrap', textAlign: 'center', letterSpacing: '0.02em',
 };
 const tdFix = (left, par) => ({
-  padding: '4px 8px', fontSize: '0.78rem', border: '1px solid #e5e7eb',
-  position: 'sticky', left, background: par ? '#fff' : '#f8fafc',
+  padding: '4px 8px', fontSize: '0.78rem', border: '1px solid #E3E0F5',
+  position: 'sticky', left, background: par ? '#fff' : '#F9F8FE',
   zIndex: 1, whiteSpace: 'nowrap',
 });
 const tdTot = {
   padding: '4px 6px', textAlign: 'center', fontWeight: 700,
-  fontSize: '0.82rem', border: '1px solid #e5e7eb',
-  background: '#f0f9ff', color: '#0369a1', whiteSpace: 'nowrap',
+  fontSize: '0.82rem', border: '1px solid #E3E0F5',
+  background: '#EDEAFF', color: '#3B3180', whiteSpace: 'nowrap',
 };
 
 export default function RelatorioTurnoExtra({ contratoId, mes }) {
@@ -181,9 +181,9 @@ export default function RelatorioTurnoExtra({ contratoId, mes }) {
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10, fontSize: '0.76rem', alignItems: 'center', color: '#374151' }}>
         {[
           { bg: '#fff7ed', border: '1px solid #fed7aa', label: 'Dom / Feriado' },
-          { bg: '#dbeafe', border: '1px solid #93c5fd', label: '1 turno extra' },
-          { bg: '#60a5fa', label: '2 turnos extras' },
-          { bg: '#1d4ed8', color: '#fff', label: '3+ turnos extras' },
+          { bg: '#EDEAFF', border: '1px solid #C7C3FF', label: '1 turno extra' },
+          { bg: '#7B6FE8', label: '2 turnos extras' },
+          { bg: '#3B3180', color: '#fff', label: '3+ turnos extras' },
         ].map(({ bg, border, color, label }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 14, height: 14, background: bg, border: border || 'none', borderRadius: 3 }} />
@@ -194,7 +194,7 @@ export default function RelatorioTurnoExtra({ contratoId, mes }) {
         <button data-pdf-hide style={btnPDF} onClick={() => exportPDF(tabelaRef.current, `turno-extra-${mes}.pdf`)}>⬇ PDF</button>
       </div>
 
-      <div style={{ overflowX: 'auto', border: '1px solid #1e3a5f', borderRadius: 8 }}>
+      <div style={{ overflowX: 'auto', border: '1px solid #231F5C', borderRadius: 10 }}>
         <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: W_NOME + W_LOCAL + dias.length * W_DIA + 54 }}>
           <thead>
             <tr>
@@ -204,7 +204,7 @@ export default function RelatorioTurnoExtra({ contratoId, mes }) {
                 const { label, diaSem, isDom } = fmtDia(dia);
                 const isFer = !isDom && domFerSet.has(dia);
                 return (
-                  <th key={dia} style={{ ...thBase, width: W_DIA, background: isDom || isFer ? '#b45309' : '#1e3a5f' }}>
+                  <th key={dia} style={{ ...thBase, width: W_DIA, background: isDom || isFer ? '#b45309' : '#2D2A6E' }}>
                     <div>{label}</div>
                     <div style={{ fontSize: '0.55rem', opacity: 0.85 }}>{diaSem}</div>
                   </th>

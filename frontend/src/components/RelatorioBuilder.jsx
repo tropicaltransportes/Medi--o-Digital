@@ -111,14 +111,14 @@ function fmtNum(n) {
 function heatBg(val, maxVal) {
   if (!val || !maxVal) return undefined;
   const r = val / maxVal;
-  if (r >= 0.75) return '#1d4ed8';
-  if (r >= 0.5)  return '#3b82f6';
-  if (r >= 0.25) return '#93c5fd';
-  return '#dbeafe';
+  if (r >= 0.75) return '#3B3180';
+  if (r >= 0.5)  return '#5D52D1';
+  if (r >= 0.25) return '#A39AEB';
+  return '#EDEAFF';
 }
 function heatFg(val, maxVal) {
   if (!val || !maxVal) return '#9ca3af';
-  return (val / maxVal) >= 0.5 ? '#fff' : '#1e3a5f';
+  return (val / maxVal) >= 0.5 ? '#fff' : '#2D2A6E';
 }
 
 function getRowKey(r, linhas, rotas, veiculos) {
@@ -612,8 +612,8 @@ function PreviewRelatorio({ config }) {
   };
   const thP = {
     padding: '5px 8px', fontSize: '0.68rem', fontWeight: 700,
-    background: '#1a5276', color: 'rgba(255,255,255,0.6)',
-    border: '1px solid #154360', whiteSpace: 'nowrap', textAlign: 'center',
+    background: '#2D2A6E', color: 'rgba(255,255,255,0.6)',
+    border: '1px solid #231F5C', whiteSpace: 'nowrap', textAlign: 'center',
   };
   const tdP = { padding: '4px 8px', fontSize: '0.78rem', border: '1px solid #e5e7eb', whiteSpace: 'nowrap', color: '#9ca3af' };
   const tdPR = { ...tdP, textAlign: 'right' };
@@ -627,19 +627,19 @@ function PreviewRelatorio({ config }) {
         { placa: 'XYZ-5678', kmIni: 63200,  kmFin: 63517,  km: 317, n: 18, d1: '2026-06-10', d2: '2026-06-30' },
       ]},
     ];
-    const th = { padding: '5px 10px', fontSize: '0.68rem', fontWeight: 700, background: '#1a5276', color: 'rgba(255,255,255,0.6)', border: '1px solid #154360', whiteSpace: 'nowrap' };
+    const th = { padding: '5px 10px', fontSize: '0.68rem', fontWeight: 700, background: '#2D2A6E', color: 'rgba(255,255,255,0.6)', border: '1px solid #231F5C', whiteSpace: 'nowrap' };
     const thR = { ...th, textAlign: 'right' };
     const td = { padding: '4px 10px', fontSize: '0.78rem', border: '1px solid #e5e7eb', whiteSpace: 'nowrap', color: '#9ca3af' };
     const tdR = { ...td, textAlign: 'right' };
     return (
       <div style={{ marginTop: 8 }}>
         <span style={badge}>PRÉVIA — valores hipotéticos</span>
-        <div style={{ overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24, opacity: 0.7 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid #231F5C', borderRadius: 8, marginBottom: 24, opacity: 0.7 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr>
               <th style={th}>ROTA</th><th style={th}>VEÍCULO</th>
               <th style={thR}>1º KM (ini)</th><th style={thR}>Último KM (fin)</th>
-              <th style={{ ...thR, background: '#0e4d3a' }}>KM TOTAL</th>
+              <th style={{ ...thR, background: '#166534' }}>KM TOTAL</th>
               <th style={th}>PERÍODO</th><th style={th}>REGISTROS</th>
             </tr></thead>
             <tbody>
@@ -664,8 +664,8 @@ function PreviewRelatorio({ config }) {
                   </tr>
                 </React.Fragment>
               ))}
-              <tr style={{ background: '#dbeafe' }}>
-                <td style={{ ...td, fontWeight: 700, color: '#1a5276' }} colSpan={4}>TOTAL GERAL</td>
+              <tr style={{ background: '#EDEAFF' }}>
+                <td style={{ ...td, fontWeight: 700, color: '#2D2A6E' }} colSpan={4}>TOTAL GERAL</td>
                 <td style={{ ...tdR, fontWeight: 700, color: '#065f46', background: '#a7f3d0', fontSize: '0.9rem' }}>2.487 km</td>
                 <td style={{ ...td, fontSize: '0.7rem' }}>136 registros validados</td>
                 <td style={td}></td>
@@ -694,7 +694,7 @@ function PreviewRelatorio({ config }) {
     return (
       <div style={{ marginTop: 8 }}>
         <span style={badge}>PRÉVIA — valores hipotéticos</span>
-        <div style={{ overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24, opacity: 0.7 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid #231F5C', borderRadius: 8, marginBottom: 24, opacity: 0.7 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead><tr>
               {visiveis.map(c => <th key={c.id} style={thP}>{c.label.toUpperCase()}</th>)}
@@ -703,7 +703,7 @@ function PreviewRelatorio({ config }) {
               {['Rota 01','Rota 01','Rota 02'].map((grupo, gi) => (
                 gi === 0 || dummyRows[gi]?.rota !== dummyRows[gi-1]?.rota
                   ? <React.Fragment key={gi}>
-                      <tr><td colSpan={visiveis.length} style={{ ...tdP, background: '#1a5276', color: 'rgba(255,255,255,0.6)', fontWeight: 700 }}>{dummyRows[gi]?.rota} · {gi === 0 ? 2 : 1} registro(s)</td></tr>
+                      <tr><td colSpan={visiveis.length} style={{ ...tdP, background: '#2D2A6E', color: 'rgba(255,255,255,0.6)', fontWeight: 700 }}>{dummyRows[gi]?.rota} · {gi === 0 ? 2 : 1} registro(s)</td></tr>
                       <tr>{visiveis.map(c => <td key={c.id} style={tdP}>{cellVal(c, dummyRows[gi])}</td>)}</tr>
                     </React.Fragment>
                   : <tr key={gi}>{visiveis.map(c => <td key={c.id} style={tdP}>{cellVal(c, dummyRows[gi])}</td>)}</tr>
@@ -720,7 +720,7 @@ function PreviewRelatorio({ config }) {
   return (
     <div style={{ marginTop: 8 }}>
       <span style={badge}>PRÉVIA — valores hipotéticos</span>
-      <div style={{ overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24, opacity: 0.75 }}>
+      <div style={{ overflowX: 'auto', border: '1px solid #231F5C', borderRadius: 8, marginBottom: 24, opacity: 0.75 }}>
         <table style={{ borderCollapse: 'collapse', width: semColunas ? 'auto' : '100%' }}>
           <thead>
             <tr>
@@ -728,7 +728,7 @@ function PreviewRelatorio({ config }) {
                 {OPCOES_LINHAS.find(o => o.id === config.linhas)?.label || 'Linha'}
               </th>
               {!semColunas && cols.map(c => <th key={c} style={thP}>{c}</th>)}
-              <th style={{ ...thP, background: '#0e4d3a' }}>TOTAL</th>
+              <th style={{ ...thP, background: '#166534' }}>TOTAL</th>
             </tr>
           </thead>
           <tbody>
@@ -753,11 +753,11 @@ function PreviewRelatorio({ config }) {
               );
             })}
             {!semColunas && (
-              <tr style={{ background: '#dbeafe' }}>
-                <td style={{ ...tdP, fontWeight: 700, color: '#1a5276', background: '#dbeafe' }}>TOTAL</td>
+              <tr style={{ background: '#EDEAFF' }}>
+                <td style={{ ...tdP, fontWeight: 700, color: '#2D2A6E', background: '#EDEAFF' }}>TOTAL</td>
                 {cols.map((c, ci) => {
                   const t = rows.reduce((a, _, ri) => a + (vals[ri]?.[ci] ?? 0), 0);
-                  return <td key={c} style={{ ...tdPR, background: '#dbeafe', color: t > 0 ? '#1a5276' : '#d1d5db', fontWeight: t > 0 ? 700 : 400 }}>{t > 0 ? fmtDummy(t, config.metrica) : '—'}</td>;
+                  return <td key={c} style={{ ...tdPR, background: '#EDEAFF', color: t > 0 ? '#2D2A6E' : '#d1d5db', fontWeight: t > 0 ? 700 : 400 }}>{t > 0 ? fmtDummy(t, config.metrica) : '—'}</td>;
                 })}
                 <td style={{ ...tdPR, background: '#a7f3d0', color: '#065f46', fontWeight: 700 }}>
                   {fmtDummy(rows.reduce((a, _, ri) => a + (vals[ri] || []).reduce((b, v) => b + v, 0), 0), config.metrica)}
@@ -784,7 +784,7 @@ function ResultadoOdometro({ resultado, fmtNum, config }) {
 
   const th = {
     padding: '6px 10px', fontSize: '0.72rem', fontWeight: 700,
-    background: '#1a5276', color: '#fff', border: '1px solid #154360',
+    background: '#2D2A6E', color: '#fff', border: '1px solid #231F5C',
     whiteSpace: 'nowrap',
   };
   const thR = { ...th, textAlign: 'right' };
@@ -801,7 +801,7 @@ function ResultadoOdometro({ resultado, fmtNum, config }) {
   const totalGeral = linhas.reduce((acc, l) => acc + (l.kmTotal || 0), 0);
 
   return (
-    <div style={{ marginTop: 8, overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24 }}>
+    <div style={{ marginTop: 8, overflowX: 'auto', border: '1px solid #231F5C', borderRadius: 8, marginBottom: 24 }}>
       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
         <thead>
           <tr>
@@ -809,7 +809,7 @@ function ResultadoOdometro({ resultado, fmtNum, config }) {
             <th style={th}>VEÍCULO</th>
             <th style={thR}>1º KM (ini)</th>
             <th style={thR}>Último KM (fin)</th>
-            <th style={{ ...thR, background: '#0e4d3a' }}>KM TOTAL</th>
+            <th style={{ ...thR, background: '#166534' }}>KM TOTAL</th>
             <th style={{ ...th, color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem' }}>PERÍODO</th>
             <th style={{ ...th, color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem' }}>REGISTROS</th>
           </tr>
@@ -825,7 +825,7 @@ function ResultadoOdometro({ resultado, fmtNum, config }) {
                   const semFim = l.kmFin == null;
                   return (
                     <tr key={`${l.rota_id}_${l.veiculo_id}`}>
-                      <td style={{ ...td0, background: bg, fontWeight: li === 0 ? 600 : 400, color: li === 0 ? '#1a5276' : 'inherit' }}>
+                      <td style={{ ...td0, background: bg, fontWeight: li === 0 ? 600 : 400, color: li === 0 ? '#2D2A6E' : 'inherit' }}>
                         {li === 0 ? l.rotaNome : ''}
                       </td>
                       <td style={{ ...td0, background: bg, fontWeight: 600 }}>{l.veiculoPlaca}</td>
@@ -861,17 +861,17 @@ function ResultadoOdometro({ resultado, fmtNum, config }) {
             );
           })}
           {/* Total geral */}
-          <tr style={{ background: '#dbeafe' }}>
-            <td style={{ ...td0, fontWeight: 700, color: '#1a5276', background: '#dbeafe' }} colSpan={4}>
+          <tr style={{ background: '#EDEAFF' }}>
+            <td style={{ ...td0, fontWeight: 700, color: '#2D2A6E', background: '#EDEAFF' }} colSpan={4}>
               TOTAL GERAL
             </td>
             <td style={{ ...tdR, background: '#a7f3d0', color: '#065f46', fontWeight: 700, fontSize: '1rem' }}>
               {fmtNum(totalGeral)} km
             </td>
-            <td style={{ ...td0, background: '#dbeafe', fontSize: '0.72rem', color: '#6b7280' }}>
+            <td style={{ ...td0, background: '#EDEAFF', fontSize: '0.72rem', color: '#6b7280' }}>
               {linhas.reduce((acc, l) => acc + l.nRegs, 0)} registros validados
             </td>
-            <td style={{ ...td0, background: '#dbeafe' }}></td>
+            <td style={{ ...td0, background: '#EDEAFF' }}></td>
           </tr>
         </tbody>
       </table>
@@ -889,7 +889,7 @@ function ResultadoLista({ resultado, config, fmtNum, calcKm, calcHoras }) {
 
   const thL = {
     padding: '5px 8px', fontSize: '0.7rem', fontWeight: 700,
-    background: '#1a5276', color: '#fff', border: '1px solid #154360',
+    background: '#2D2A6E', color: '#fff', border: '1px solid #231F5C',
     whiteSpace: 'nowrap', textAlign: 'left',
   };
   const thR = { ...thL, textAlign: 'right' };
@@ -921,7 +921,7 @@ function ResultadoLista({ resultado, config, fmtNum, calcKm, calcHoras }) {
   const mostrarKmRod = cols['km_rod'];
 
   return (
-    <div style={{ marginTop: 8, overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24 }}>
+    <div style={{ marginTop: 8, overflowX: 'auto', border: '1px solid #231F5C', borderRadius: 8, marginBottom: 24 }}>
       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
         <thead>
           <tr>
@@ -944,8 +944,8 @@ function ResultadoLista({ resultado, config, fmtNum, calcKm, calcHoras }) {
                     colSpan={visíveis.length}
                     style={{
                       padding: '5px 10px', fontWeight: 700, fontSize: '0.8rem',
-                      background: '#1a5276', color: '#fff',
-                      border: '1px solid #154360',
+                      background: '#2D2A6E', color: '#fff',
+                      border: '1px solid #231F5C',
                     }}
                   >
                     {grupo.label}
@@ -984,16 +984,16 @@ function ResultadoLista({ resultado, config, fmtNum, calcKm, calcHoras }) {
           })}
           {/* Total geral */}
           {mostrarKmRod && (
-            <tr style={{ background: '#dbeafe' }}>
+            <tr style={{ background: '#EDEAFF' }}>
               {visíveis.map(col => {
                 if (col.id === 'km_rod') return (
-                  <td key={col.id} style={{ ...tdR, fontWeight: 700, background: '#dbeafe', color: '#1a5276', fontSize: '0.88rem' }}>
+                  <td key={col.id} style={{ ...tdR, fontWeight: 700, background: '#EDEAFF', color: '#2D2A6E', fontSize: '0.88rem' }}>
                     {fmtNum(Math.round(totalGeral))}
                   </td>
                 );
                 const isFirst = col.id === visíveis[0].id;
                 return (
-                  <td key={col.id} style={{ ...td0, fontWeight: isFirst ? 700 : 400, background: '#dbeafe', color: '#1a5276' }}>
+                  <td key={col.id} style={{ ...td0, fontWeight: isFirst ? 700 : 400, background: '#EDEAFF', color: '#2D2A6E' }}>
                     {isFirst ? 'TOTAL GERAL' : ''}
                   </td>
                 );
@@ -1022,8 +1022,8 @@ function ResultadoPivot({ resultado, config, isHeat }) {
 
   const thBase = {
     padding: '5px 8px', fontSize: '0.7rem', fontWeight: 700,
-    background: '#1a5276', color: '#fff',
-    border: '1px solid #154360', whiteSpace: 'nowrap', textAlign: 'center',
+    background: '#2D2A6E', color: '#fff',
+    border: '1px solid #231F5C', whiteSpace: 'nowrap', textAlign: 'center',
   };
   const td0 = { padding: '4px 8px', fontSize: '0.8rem', border: '1px solid #e5e7eb', whiteSpace: 'nowrap' };
   const tdC = { ...td0, textAlign: 'center' };
@@ -1036,7 +1036,7 @@ function ResultadoPivot({ resultado, config, isHeat }) {
       {isHeat && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 8, fontSize: '0.74rem', color: '#374151', alignItems: 'center', flexWrap: 'wrap' }}>
           {[
-            { bg: '#dbeafe', label: '< 25% do máximo' },
+            { bg: '#EDEAFF', label: '< 25% do máximo' },
             { bg: '#93c5fd', label: '25–50%' },
             { bg: '#3b82f6', label: '50–75%' },
             { bg: '#1d4ed8', label: '> 75%' },
@@ -1049,7 +1049,7 @@ function ResultadoPivot({ resultado, config, isHeat }) {
         </div>
       )}
 
-      <div style={{ overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24 }}>
+      <div style={{ overflowX: 'auto', border: '1px solid #231F5C', borderRadius: 8, marginBottom: 24 }}>
         <table style={{ borderCollapse: 'collapse', width: semColunas ? 'auto' : '100%' }}>
           <thead>
             <tr>
@@ -1059,7 +1059,7 @@ function ResultadoPivot({ resultado, config, isHeat }) {
               {!semColunas && colKeys.map(ck => (
                 <th key={ck} style={thBase}>{colLabels[ck] || ck}</th>
               ))}
-              <th style={{ ...thBase, background: '#0e4d3a', minWidth: 80 }}>TOTAL</th>
+              <th style={{ ...thBase, background: '#166534', minWidth: 80 }}>TOTAL</th>
             </tr>
           </thead>
           <tbody>
@@ -1089,12 +1089,12 @@ function ResultadoPivot({ resultado, config, isHeat }) {
             })}
 
             {!semColunas && (
-              <tr style={{ background: '#dbeafe' }}>
-                <td style={{ ...td0, fontWeight: 700, background: '#dbeafe', position: 'sticky', left: 0, zIndex: 1 }}>TOTAL</td>
+              <tr style={{ background: '#EDEAFF' }}>
+                <td style={{ ...td0, fontWeight: 700, background: '#EDEAFF', position: 'sticky', left: 0, zIndex: 1 }}>TOTAL</td>
                 {colKeys.map(ck => {
                   const t = rowKeys.reduce((acc, rk) => acc + (dados[rk]?.[ck] || 0), 0);
                   return (
-                    <td key={ck} style={{ ...tdC, background: '#dbeafe', color: t > 0 ? '#1a5276' : '#d1d5db', fontWeight: t > 0 ? 700 : 400 }}>
+                    <td key={ck} style={{ ...tdC, background: '#EDEAFF', color: t > 0 ? '#2D2A6E' : '#d1d5db', fontWeight: t > 0 ? 700 : 400 }}>
                       {t > 0 ? formatarValor(t, config.metrica) : '—'}
                     </td>
                   );
