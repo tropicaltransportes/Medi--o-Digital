@@ -537,6 +537,11 @@ export default function RelatorioBuilder({ contratos }) {
         </div>
       )}
 
+      {/* Prévia automática (enquanto não há resultado real) */}
+      {!resultado && !carregando && (
+        <PreviewRelatorio config={config} />
+      )}
+
       {resultado && resultado.tipo === 'odometro' && (
         <ResultadoOdometro resultado={resultado} fmtNum={fmtNum} config={config} />
       )}
@@ -548,6 +553,211 @@ export default function RelatorioBuilder({ contratos }) {
       {resultado && resultado.tipo === 'pivot' && (
         <ResultadoPivot resultado={resultado} config={config} isHeat={isHeat} />
       )}
+    </div>
+  );
+}
+
+// ── PRÉVIA ───────────────────────────────────────────────────────────────────
+
+const DUMMY = {
+  linhas: {
+    rota:       ['Rota 01', 'Rota 02', 'Rota 03'],
+    veiculo:    ['PEI-7B61', 'ABC-1234', 'XYZ-5678'],
+    tipo_turno: ['rota', 'turno extra', 'normal'],
+    status:     ['completo', 'rascunho', 'completo'],
+  },
+  colunas: {
+    dia_mes:    ['01/jun', '05/jun', '10/jun', '15/jun', '20/jun'],
+    dia_semana: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui'],
+    tipo_turno: ['normal', 'turno extra', 'rota'],
+    status:     ['completo', 'rascunho'],
+    nenhuma:    [],
+  },
+  valores: {
+    contagem: [[2,0,3,1,2],[0,1,2,0,1],[1,2,0,2,1]],
+    km:       [[145,0,230,89,178],[0,67,145,0,92],[89,120,0,134,67]],
+    horas:    [[2.5,0,3.0,1.5,2.0],[0,1.0,2.5,0,1.5],[1.0,2.0,0,2.0,1.0]],
+  },
+};
+
+function fmtDummy(val, metrica) {
+  if (!val) return '—';
+  if (metrica === 'km')    return `${val} km`;
+  if (metrica === 'horas') return `${val.toFixed(1)} h`;
+  return String(val);
+}
+
+function PreviewRelatorio({ config }) {
+  const viz  = config.visualizacao;
+  const cols = DUMMY.colunas[config.colunas] || [];
+  const rows = DUMMY.linhas[config.linhas] || DUMMY.linhas.rota;
+  const vals = DUMMY.valores[config.metrica] || DUMMY.valores.contagem;
+  const semColunas = config.colunas === 'nenhuma';
+  const isHeat = viz === 'heatmap' && !semColunas;
+
+  const badge = {
+    display: 'inline-block', background: '#fef3c7', color: '#92400e',
+    border: '1px solid #fcd34d', borderRadius: 4,
+    padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700,
+    marginBottom: 8, letterSpacing: '0.03em',
+  };
+  const thP = {
+    padding: '5px 8px', fontSize: '0.68rem', fontWeight: 700,
+    background: '#1a5276', color: 'rgba(255,255,255,0.6)',
+    border: '1px solid #154360', whiteSpace: 'nowrap', textAlign: 'center',
+  };
+  const tdP = { padding: '4px 8px', fontSize: '0.78rem', border: '1px solid #e5e7eb', whiteSpace: 'nowrap', color: '#9ca3af' };
+  const tdPR = { ...tdP, textAlign: 'right' };
+
+  // ── Odômetro ──
+  if (viz === 'odometro') {
+    const rotasEx = [
+      { nome: 'Rota 01', veiculos: [{ placa: 'PEI-7B61', kmIni: 545814, kmFin: 547054, km: 1240, n: 76, d1: '2026-06-01', d2: '2026-06-30' }] },
+      { nome: 'Rota 02', veiculos: [
+        { placa: 'ABC-1234', kmIni: 280001, kmFin: 280931, km: 930, n: 42, d1: '2026-06-01', d2: '2026-06-28' },
+        { placa: 'XYZ-5678', kmIni: 63200,  kmFin: 63517,  km: 317, n: 18, d1: '2026-06-10', d2: '2026-06-30' },
+      ]},
+    ];
+    const th = { padding: '5px 10px', fontSize: '0.68rem', fontWeight: 700, background: '#1a5276', color: 'rgba(255,255,255,0.6)', border: '1px solid #154360', whiteSpace: 'nowrap' };
+    const thR = { ...th, textAlign: 'right' };
+    const td = { padding: '4px 10px', fontSize: '0.78rem', border: '1px solid #e5e7eb', whiteSpace: 'nowrap', color: '#9ca3af' };
+    const tdR = { ...td, textAlign: 'right' };
+    return (
+      <div style={{ marginTop: 8 }}>
+        <span style={badge}>PRÉVIA — valores hipotéticos</span>
+        <div style={{ overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24, opacity: 0.7 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <thead><tr>
+              <th style={th}>ROTA</th><th style={th}>VEÍCULO</th>
+              <th style={thR}>1º KM (ini)</th><th style={thR}>Último KM (fin)</th>
+              <th style={{ ...thR, background: '#0e4d3a' }}>KM TOTAL</th>
+              <th style={th}>PERÍODO</th><th style={th}>REGISTROS</th>
+            </tr></thead>
+            <tbody>
+              {rotasEx.map((rota, ri) => (
+                <React.Fragment key={ri}>
+                  {rota.veiculos.map((v, vi) => (
+                    <tr key={vi} style={{ background: vi % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                      <td style={td}>{vi === 0 ? rota.nome : ''}</td>
+                      <td style={{ ...td, color: '#6b7280' }}>{v.placa}</td>
+                      <td style={tdR}>{v.kmIni.toLocaleString('pt-BR')}</td>
+                      <td style={tdR}>{v.kmFin.toLocaleString('pt-BR')}</td>
+                      <td style={{ ...tdR, color: '#15803d', fontWeight: 700 }}>{v.km.toLocaleString('pt-BR')}</td>
+                      <td style={{ ...td, fontSize: '0.7rem' }}>{v.d1} → {v.d2}</td>
+                      <td style={{ ...tdR, fontSize: '0.7rem' }}>{v.n}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ background: '#f0fdf4' }}>
+                    <td style={{ ...td, fontWeight: 700, color: '#15803d' }}>Subtotal {rota.nome}</td>
+                    <td style={td} colSpan={3}></td>
+                    <td style={{ ...tdR, fontWeight: 700, color: '#15803d' }}>{rota.veiculos.reduce((a,v) => a+v.km, 0).toLocaleString('pt-BR')} km</td>
+                    <td style={td} colSpan={2}></td>
+                  </tr>
+                </React.Fragment>
+              ))}
+              <tr style={{ background: '#dbeafe' }}>
+                <td style={{ ...td, fontWeight: 700, color: '#1a5276' }} colSpan={4}>TOTAL GERAL</td>
+                <td style={{ ...tdR, fontWeight: 700, color: '#065f46', background: '#a7f3d0', fontSize: '0.9rem' }}>2.487 km</td>
+                <td style={{ ...td, fontSize: '0.7rem' }}>136 registros validados</td>
+                <td style={td}></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Lista Detalhada ──
+  if (viz === 'lista') {
+    const colsLista = config.colunasLista || COLUNAS_LISTA_PADRAO;
+    const visiveis = COLUNAS_LISTA.filter(c => colsLista[c.id]);
+    const dummyRows = [
+      { rota: 'Rota 01', veiculo: 'PEI-7B61', data: '2026-06-01', saida: '06:00', chegada: '14:00', km_ini: '545.814', km_fin: '545.870', km_rod: '56', tipo_turno: 'rota', status: 'completo', obs: 'Linha 1' },
+      { rota: 'Rota 01', veiculo: 'PEI-7B61', data: '2026-06-01', saida: '14:00', chegada: '22:00', km_ini: '545.879', km_fin: '545.925', km_rod: '46', tipo_turno: 'rota', status: 'completo', obs: '—' },
+      { rota: 'Rota 01', veiculo: 'ABC-1234', data: '2026-06-02', saida: '06:00', chegada: '14:00', km_ini: '280.001', km_fin: '280.057', km_rod: '56', tipo_turno: 'turno extra', status: 'completo', obs: '—' },
+      { rota: 'Rota 02', veiculo: 'XYZ-5678', data: '2026-06-01', saida: '06:00', chegada: '14:00', km_ini: '63.200', km_fin: '63.256', km_rod: '56', tipo_turno: 'rota', status: 'rascunho', obs: '—' },
+    ];
+    const cellVal = (col, r) => {
+      const map = { rota: r.rota, veiculo: r.veiculo, data: r.data, saida: r.saida, chegada: r.chegada, km_ini: r.km_ini, km_fin: r.km_fin, km_rod: r.km_rod, tipo_turno: r.tipo_turno, status: r.status, obs: r.obs };
+      return map[col.id] || '—';
+    };
+    return (
+      <div style={{ marginTop: 8 }}>
+        <span style={badge}>PRÉVIA — valores hipotéticos</span>
+        <div style={{ overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24, opacity: 0.7 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <thead><tr>
+              {visiveis.map(c => <th key={c.id} style={thP}>{c.label.toUpperCase()}</th>)}
+            </tr></thead>
+            <tbody>
+              {['Rota 01','Rota 01','Rota 02'].map((grupo, gi) => (
+                gi === 0 || dummyRows[gi]?.rota !== dummyRows[gi-1]?.rota
+                  ? <React.Fragment key={gi}>
+                      <tr><td colSpan={visiveis.length} style={{ ...tdP, background: '#1a5276', color: 'rgba(255,255,255,0.6)', fontWeight: 700 }}>{dummyRows[gi]?.rota} · {gi === 0 ? 2 : 1} registro(s)</td></tr>
+                      <tr>{visiveis.map(c => <td key={c.id} style={tdP}>{cellVal(c, dummyRows[gi])}</td>)}</tr>
+                    </React.Fragment>
+                  : <tr key={gi}>{visiveis.map(c => <td key={c.id} style={tdP}>{cellVal(c, dummyRows[gi])}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Pivot / Heat Map / Tabela ──
+  const maxVal = Math.max(...vals.flat());
+  return (
+    <div style={{ marginTop: 8 }}>
+      <span style={badge}>PRÉVIA — valores hipotéticos</span>
+      <div style={{ overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24, opacity: 0.75 }}>
+        <table style={{ borderCollapse: 'collapse', width: semColunas ? 'auto' : '100%' }}>
+          <thead>
+            <tr>
+              <th style={{ ...thP, textAlign: 'left', minWidth: 120 }}>
+                {OPCOES_LINHAS.find(o => o.id === config.linhas)?.label || 'Linha'}
+              </th>
+              {!semColunas && cols.map(c => <th key={c} style={thP}>{c}</th>)}
+              <th style={{ ...thP, background: '#0e4d3a' }}>TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => {
+              const rowVals = !semColunas ? (vals[ri] || []) : [];
+              const rowTotal = semColunas
+                ? (vals[ri]?.[0] ?? 0)
+                : rowVals.reduce((a, v) => a + v, 0);
+              return (
+                <tr key={ri}>
+                  <td style={{ ...tdP, textAlign: 'left', fontWeight: 600, background: ri % 2 === 0 ? '#fff' : '#f8fafc' }}>{row}</td>
+                  {!semColunas && cols.map((c, ci) => {
+                    const val = rowVals[ci] ?? 0;
+                    const bg = isHeat ? heatBg(val, maxVal) : (ri % 2 === 0 ? '#fff' : '#f8fafc');
+                    const fg = isHeat ? heatFg(val, maxVal) : (val > 0 ? '#6b7280' : '#d1d5db');
+                    return <td key={c} style={{ ...tdP, textAlign: 'center', background: bg, color: fg, fontWeight: val > 0 ? 600 : 400 }}>{val > 0 ? fmtDummy(val, config.metrica) : '—'}</td>;
+                  })}
+                  <td style={{ ...tdPR, background: ri % 2 === 0 ? '#f0fdf4' : '#dcfce7', color: '#15803d', fontWeight: 700 }}>
+                    {fmtDummy(rowTotal, config.metrica)}
+                  </td>
+                </tr>
+              );
+            })}
+            {!semColunas && (
+              <tr style={{ background: '#dbeafe' }}>
+                <td style={{ ...tdP, fontWeight: 700, color: '#1a5276', background: '#dbeafe' }}>TOTAL</td>
+                {cols.map((c, ci) => {
+                  const t = rows.reduce((a, _, ri) => a + (vals[ri]?.[ci] ?? 0), 0);
+                  return <td key={c} style={{ ...tdPR, background: '#dbeafe', color: t > 0 ? '#1a5276' : '#d1d5db', fontWeight: t > 0 ? 700 : 400 }}>{t > 0 ? fmtDummy(t, config.metrica) : '—'}</td>;
+                })}
+                <td style={{ ...tdPR, background: '#a7f3d0', color: '#065f46', fontWeight: 700 }}>
+                  {fmtDummy(rows.reduce((a, _, ri) => a + (vals[ri] || []).reduce((b, v) => b + v, 0), 0), config.metrica)}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
