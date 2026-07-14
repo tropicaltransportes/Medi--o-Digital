@@ -4,9 +4,10 @@ import { formatarMes } from '../storage.js';
 import { s } from '../styles.js';
 import RelatorioTurnoExtra from './RelatorioTurnoExtra.jsx';
 import RelatorioTurnosRealizados from './RelatorioTurnosRealizados.jsx';
+import RelatorioBuilder from './RelatorioBuilder.jsx';
 
 const DIAS_PT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-const SUB_ABAS = ['Dom / Feriados', 'Turno Extra', 'Turnos Realizados'];
+const SUB_ABAS = ['Dom / Feriados', 'Turno Extra', 'Turnos Realizados', 'Construtor'];
 
 function domingosDomes(mesStr) {
   const [ano, m] = mesStr.split('-').map(Number);
@@ -247,6 +248,10 @@ export default function RelatoriosScreen() {
 
       {subAba === 2 && (
         <RelatorioTurnosRealizados contratoId={contratoId} mes={mes} />
+      )}
+
+      {subAba === 3 && (
+        <RelatorioBuilder contratos={contratos} />
       )}
     </div>
   );
