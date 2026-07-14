@@ -12,16 +12,20 @@ const tdR = { ...td0, textAlign: 'right' };
 const tdTot = { ...td0, fontWeight: 700, background: '#f0fdf4' };
 const tdTotR = { ...tdTot, textAlign: 'right' };
 
+const TIPOS_VEICULO = ['RODOVIÁRIO', 'SEMI RODOVIÁRIO', 'URBANO', 'MICRO', 'VAN', 'PEQUENO PORTE'];
+
 export default function BoletimScreen() {
   const [contratos, setContratos] = useState([]);
   const [contratoId, setContratoId] = useState('');
   const [mes, setMes] = useState('');
   const [rotas, setRotas] = useState([]);
-  const [veiculos, setVeiculos] = useState([]);
   const [registros, setRegistros] = useState([]);
   const [regra, setRegra] = useState(null);
   const [valoresVeiculo, setValoresVeiculo] = useState([]);
   const [carregando, setCarregando] = useState(false);
+  // configuracao por rota_id (sobrescreve o valor do banco para esta sessão + salva)
+  const [configRotas, setConfigRotas] = useState({});
+  const [salvandoConfig, setSalvandoConfig] = useState({});
 
   const mesesDisponiveis = useMemo(() => {
     const lista = [];
@@ -47,9 +51,8 @@ export default function BoletimScreen() {
     setCarregando(true);
     const cid = Number(contratoId);
 
-    const [{ data: rotasData }, { data: veicData }, { data: regraData }] = await Promise.all([
-      supabase.from('rotas').select('id, nome').eq('contrato_id', cid),
-      supabase.from('veiculos').select('id, placa, descricao, configuracao'),
+    const [{ data: rotasData }, { data: regraData }] = await Promise.all([
+      supabase.from('rotas').select('id, nome, configuracao').eq('contrato_id', cid),
       supabase.from('regras_contrato').select('*, valores_veiculo(*)').eq('contrato_id', cid).maybeSingle(),
     ]);
 
@@ -65,62 +68,79 @@ export default function BoletimScreen() {
       regsData = data || [];
     }
 
+    const cfg = {};
+    for (const r of (rotasData || [])) {
+      cfg[r.id] = r.configuracao || '';
+    }
 
     setRotas(rotasData || []);
-    setVeiculos(veicData || []);
+    setConfigRotas(cfg);
     setRegistros(regsData);
     setRegra(regraData);
     setValoresVeiculo(regraData?.valores_veiculo || []);
     setCarregando(false);
   }
 
+  async function salvarConfigRota(rotaId, novaConfig) {
+    setSalvandoConfig(prev => ({ ...prev, [rotaId]: true }));
+    await supabase.from('rotas').update({ configuracao: novaConfig || null }).eq('id', rotaId);
+    setSalvandoConfig(prev => ({ ...prev, [rotaId]: false }));
+  }
+
+  function handleConfigChange(rotaId, novaConfig) {
+    setConfigRotas(prev => ({ ...prev, [rotaId]: novaConfig }));
+    salvarConfigRota(rotaId, novaConfig);
+  }
+
   const linhas = useMemo(() => {
     if (!registros.length) return [];
+
+    // Agrupa SOMENTE por rota_id
     const grupos = new Map();
     for (const r of registros) {
-      const chave = `${r.rota_id}_${r.veiculo_id}`;
-      if (!grupos.has(chave)) grupos.set(chave, { rota_id: r.rota_id, veiculo_id: r.veiculo_id, regs: [] });
-      grupos.get(chave).regs.push(r);
+      if (!grupos.has(r.rota_id)) {
+        grupos.set(r.rota_id, { rota_id: r.rota_id, regs: [] });
+      }
+      grupos.get(r.rota_id).regs.push(r);
     }
 
     return Array.from(grupos.values()).map(g => {
       const rota = rotas.find(x => x.id === g.rota_id);
-      const veiculo = veiculos.find(x => x.id === g.veiculo_id);
-      const billing = valoresVeiculo.find(v => v.configuracao === veiculo?.configuracao);
+      const configAtual = configRotas[g.rota_id] || '';
+      const billing = valoresVeiculo.find(v => v.configuracao === configAtual);
 
       const kmTotal = g.regs.reduce((acc, r) => acc + kmRodados(r), 0);
       const kmFranquia = regra?.km_franquia_mensal || 0;
       const kmExtra = Math.max(0, kmTotal - kmFranquia);
 
-      // dom/feriado sobrepõe tipo_turno → conta como turno normal
       const tipoEfetivo = r => r.domingo_feriado ? 'normal' : r.tipo_turno;
       const tnQuant = g.regs.filter(r => tipoEfetivo(r) === 'normal').length;
       const teQuant = g.regs.filter(r => tipoEfetivo(r) === 'turno extra').length;
 
-      const valorFixo    = billing?.valor_mensal || 0;
-      const tnValor      = billing?.valor_turno_normal || 0;
-      const teValor      = billing?.valor_turno_extra || 0;
-      const kmExValor    = billing?.valor_km_extra_turno_extra || 0;
+      const valorFixo   = billing?.valor_mensal || 0;
+      const tnValor     = billing?.valor_turno_normal || 0;
+      const teValor     = billing?.valor_turno_extra || 0;
+      const kmExValor   = billing?.valor_km_extra_turno_extra || 0;
 
-      const tnTotal      = tnQuant * tnValor;
-      const teTotal      = teQuant * teValor;
-      const kmExTotal    = kmExtra * kmExValor;
-      const valorBruto   = valorFixo + tnTotal + teTotal + kmExTotal;
-      const iss          = valorBruto * 0.05;
+      const tnTotal     = tnQuant * tnValor;
+      const teTotal     = teQuant * teValor;
+      const kmExTotal   = kmExtra * kmExValor;
+      const valorBruto  = valorFixo + tnTotal + teTotal + kmExTotal;
+      const iss         = valorBruto * 0.05;
       const valorLiquido = valorBruto - iss;
 
       return {
+        rota_id: g.rota_id,
         rotaNome: rota?.nome || '—',
-        tipo: veiculo?.configuracao || null,
-        placa: veiculo?.placa || '—',
-        semConfig: !veiculo?.configuracao || !billing,
+        configAtual,
+        semConfig: !configAtual || !billing,
         valorFixo, tnValor, tnQuant, tnTotal,
         teValor, teQuant, teTotal,
         kmExValor, kmExtra, kmExTotal,
         valorBruto, iss, valorLiquido,
       };
     }).sort((a, b) => a.rotaNome.localeCompare(b.rotaNome));
-  }, [registros, rotas, veiculos, valoresVeiculo, regra]);
+  }, [registros, rotas, valoresVeiculo, regra, configRotas]);
 
   const tot = useMemo(() => linhas.reduce((acc, l) => ({
     valorFixo:    acc.valorFixo    + l.valorFixo,
@@ -166,7 +186,7 @@ export default function BoletimScreen() {
 
       {!carregando && contratoId && mes && linhas.length === 0 && (
         <div style={{ ...s.card, textAlign: 'center', color: '#6b7280', padding: '48px 24px' }}>
-          Nenhum registro completo encontrado para este contrato e mês.
+          Nenhum registro validado encontrado para este contrato e mês.
         </div>
       )}
 
@@ -184,7 +204,7 @@ export default function BoletimScreen() {
               <thead>
                 <tr>
                   <th style={th0} rowSpan={2}>ROTA</th>
-                  <th style={th0} rowSpan={2}>TIPO</th>
+                  <th style={{ ...th0, minWidth: 160 }} rowSpan={2}>TIPO</th>
                   <th style={th0} rowSpan={2}>VALOR FIXO</th>
                   <th style={{ ...th1, textAlign: 'center' }} colSpan={3}>TURNO NORMAL</th>
                   <th style={{ ...th0, textAlign: 'center' }} colSpan={3}>TURNO EXTRA</th>
@@ -201,12 +221,24 @@ export default function BoletimScreen() {
               </thead>
               <tbody>
                 {linhas.map((l, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                  <tr key={l.rota_id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
                     <td style={td0}>{l.rotaNome}</td>
-                    <td style={td0}>
-                      {l.semConfig
-                        ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{l.tipo || 'SEM CONFIG'} ⚠</span>
-                        : <span style={{ fontWeight: 600 }}>{l.tipo}</span>}
+                    <td style={{ ...td0, padding: '3px 6px' }}>
+                      <select
+                        value={l.configAtual}
+                        onChange={e => handleConfigChange(l.rota_id, e.target.value)}
+                        disabled={salvandoConfig[l.rota_id]}
+                        style={{
+                          width: '100%', fontSize: '0.78rem', padding: '3px 6px',
+                          border: l.semConfig ? '1px solid #fca5a5' : '1px solid #d1d5db',
+                          borderRadius: 4, background: l.semConfig ? '#fef2f2' : '#fff',
+                          color: l.semConfig ? '#dc2626' : '#111827',
+                          fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        <option value="">— Selecione —</option>
+                        {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
                     </td>
                     <td style={tdR}>{fmt(l.valorFixo)}</td>
                     <td style={tdR}>{fmt(l.tnValor)}</td>
@@ -273,7 +305,7 @@ export default function BoletimScreen() {
 
           {linhas.some(l => l.semConfig) && (
             <p style={{ color: '#dc2626', marginTop: 12, fontSize: '0.85rem', fontWeight: 600 }}>
-              ⚠ Alguns veículos não têm configuração de faturamento definida. Configure em "Cadastros" → Veículos.
+              ⚠ Algumas rotas não têm tipo de veículo definido. Selecione o tipo na coluna TIPO acima.
             </p>
           )}
         </>
