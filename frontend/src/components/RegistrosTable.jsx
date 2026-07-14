@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { kmRodados } from '../storage.js';
 import { s } from '../styles.js';
 
@@ -12,6 +12,31 @@ const btnAcao = {
   fontSize: '0.75rem', cursor: 'pointer', background: '#fff', fontWeight: 600,
 };
 
+const TURNO_ORDER = { rota: 0, normal: 1, 'turno extra': 2, 'rodada interna': 3, manutencao: 4 };
+
+const DEFAULT_ORDEM = { col: 'data', dir: 'desc' };
+
+// Colunas sortáveis: id da coluna → null = não sortável
+const COLUNAS = [
+  { id: 'dom_fer',  label: 'Dom/Fer',    sortable: true,  gestor: true,  align: 'center' },
+  { id: 'rota',     label: 'Rota',       sortable: false },
+  { id: 'veiculo',  label: 'Veículo',    sortable: true },
+  { id: 'data',     label: 'Data',       sortable: true },
+  { id: 'saida',    label: 'Saída',      sortable: true },
+  { id: 'chegada',  label: 'Chegada',    sortable: true },
+  { id: null,       label: 'KM Ini.',    sortable: false },
+  { id: null,       label: 'KM Fin.',    sortable: false },
+  { id: 'km_rod',   label: 'KM Rod.',    sortable: true },
+  { id: 'turno',    label: 'Turno',      sortable: true },
+  { id: 'status',   label: 'Status',     sortable: true },
+  { id: 'obs',      label: 'Observações', sortable: true },
+];
+
+function indicador(col, ordem) {
+  if (ordem.col !== col) return <span style={{ color: '#9ca3af', fontSize: '0.65rem', marginLeft: 3 }}>⇅</span>;
+  return <span style={{ color: '#2563eb', fontSize: '0.7rem', marginLeft: 3 }}>{ordem.dir === 'asc' ? '↑' : '↓'}</span>;
+}
+
 export default function RegistrosTable({
   registros,
   todasRotas = [],
@@ -21,6 +46,7 @@ export default function RegistrosTable({
   onDomingoFeriado,
 }) {
   const modoGestor = Boolean(onValidar);
+  const [ordem, setOrdem] = useState(DEFAULT_ORDEM);
 
   if (!registros.length) {
     return <p style={{ ...s.subtitle, marginTop: 12 }}>Nenhum registro encontrado.</p>;
@@ -35,21 +61,88 @@ export default function RegistrosTable({
     return veiculos.find(x => x.id === r.veiculo_id)?.placa || '—';
   }
 
+  function toggleOrdem(colId) {
+    if (!colId) return;
+    setOrdem(prev => {
+      if (prev.col !== colId) return { col: colId, dir: 'asc' };
+      if (prev.dir === 'asc') return { col: colId, dir: 'desc' };
+      return { ...DEFAULT_ORDEM };
+    });
+  }
+
+  function ordenar(lista) {
+    const mult = ordem.dir === 'asc' ? 1 : -1;
+    return [...lista].sort((a, b) => {
+      switch (ordem.col) {
+        case 'dom_fer': {
+          const va = a.domingo_feriado ? 1 : 0;
+          const vb = b.domingo_feriado ? 1 : 0;
+          return mult * (va - vb);
+        }
+        case 'veiculo':
+          return mult * veiculoPlaca(a).localeCompare(veiculoPlaca(b));
+        case 'data':
+          return mult * (`${a.data}${a.horario_saida || ''}`).localeCompare(`${b.data}${b.horario_saida || ''}`);
+        case 'saida':
+          return mult * (a.horario_saida || '').localeCompare(b.horario_saida || '');
+        case 'chegada':
+          return mult * (a.horario_chegada || '').localeCompare(b.horario_chegada || '');
+        case 'km_rod':
+          return mult * (kmRodados(a) - kmRodados(b));
+        case 'turno': {
+          const ta = TURNO_ORDER[a.tipo_turno] ?? 99;
+          const tb = TURNO_ORDER[b.tipo_turno] ?? 99;
+          return mult * (ta - tb);
+        }
+        case 'status': {
+          const va = a.status === 'completo' ? 0 : 1;
+          const vb = b.status === 'completo' ? 0 : 1;
+          return mult * (va - vb);
+        }
+        case 'obs': {
+          const va = [a.finalidade, a.observacao].filter(Boolean).join(' · ').toLowerCase();
+          const vb = [b.finalidade, b.observacao].filter(Boolean).join(' · ').toLowerCase();
+          if (!va && vb) return 1;
+          if (va && !vb) return -1;
+          return mult * va.localeCompare(vb);
+        }
+        default:
+          return 0;
+      }
+    });
+  }
+
+  const thStyle = (colId, sortable) => ({
+    ...s.th,
+    cursor: sortable ? 'pointer' : 'default',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    background: (sortable && ordem.col === colId) ? '#dbeafe' : undefined,
+  });
+
+  const ordenados = ordenar(registros);
+
   return (
     <div style={s.tableWrap}>
       <table style={s.table}>
         <thead>
           <tr>
-            {modoGestor && <th style={s.th} title="Domingo ou Feriado">Dom/Fer</th>}
-            {['Rota', 'Veículo', 'Data', 'Saída', 'Chegada',
-              'KM Ini.', 'KM Fin.', 'KM Rod.', 'Turno', 'Status', 'Observações'].map(col => (
-              <th key={col} style={s.th}>{col}</th>
+            {COLUNAS.filter(c => !c.gestor || modoGestor).map((col, i) => (
+              <th
+                key={i}
+                style={{ ...thStyle(col.id, col.sortable), textAlign: col.align || undefined }}
+                onClick={() => col.sortable && toggleOrdem(col.id)}
+                title={col.sortable ? (col.id === 'dom_fer' ? 'Domingo ou Feriado' : undefined) : undefined}
+              >
+                {col.label}
+                {col.sortable && indicador(col.id, ordem)}
+              </th>
             ))}
             {modoGestor && <th style={s.th}>Ações</th>}
           </tr>
         </thead>
         <tbody>
-          {registros.map(r => {
+          {ordenados.map(r => {
             const rowBg = r.validado
               ? '#f0fdf4'
               : r.domingo_feriado
