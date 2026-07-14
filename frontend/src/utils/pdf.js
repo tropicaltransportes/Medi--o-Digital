@@ -17,9 +17,9 @@ export async function exportPDF(element, filename = 'relatorio.pdf', landscape =
     const opt = {
       margin: [8, 8, 8, 8],
       filename,
-      image: { type: 'jpeg', quality: 0.96 },
+      image: { type: 'png' },
       html2canvas: {
-        scale: 1.5,
+        scale: 3,
         useCORS: true,
         logging: false,
         scrollX: 0,
