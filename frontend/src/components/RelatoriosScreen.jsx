@@ -3,9 +3,10 @@ import { supabase } from '../supabase.js';
 import { formatarMes } from '../storage.js';
 import { s } from '../styles.js';
 import RelatorioTurnoExtra from './RelatorioTurnoExtra.jsx';
+import RelatorioTurnosRealizados from './RelatorioTurnosRealizados.jsx';
 
 const DIAS_PT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-const SUB_ABAS = ['Dom / Feriados', 'Turno Extra'];
+const SUB_ABAS = ['Dom / Feriados', 'Turno Extra', 'Turnos Realizados'];
 
 function domingosDomes(mesStr) {
   const [ano, m] = mesStr.split('-').map(Number);
@@ -242,6 +243,10 @@ export default function RelatoriosScreen() {
       {/* ── RELATÓRIO TURNO EXTRA ── */}
       {subAba === 1 && (
         <RelatorioTurnoExtra contratoId={contratoId} mes={mes} />
+      )}
+
+      {subAba === 2 && (
+        <RelatorioTurnosRealizados contratoId={contratoId} mes={mes} />
       )}
     </div>
   );
