@@ -1,15 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { kmRodados } from '../storage.js';
-import { s } from '../styles.js';
+import { s, C } from '../styles.js';
 
-const statusStyle = {
-  rascunho: { color: '#b45309', fontWeight: 600 },
-  completo:  { color: '#16a34a', fontWeight: 600 },
+const pill = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  borderRadius: 20, padding: '2px 9px', fontSize: '0.72rem', fontWeight: 600,
+};
+const statusPill = {
+  rascunho: { ...pill, background: '#fef3c7', color: '#92400e' },
+  completo:  { ...pill, background: '#dcfce7', color: '#166534' },
+};
+const turnoPill = {
+  rota:             { ...pill, background: C.accentSoft, color: C.accentDark },
+  'turno extra':    { ...pill, background: '#fef9c3', color: '#713f12' },
+  'rodada interna': { ...pill, background: '#f3e8ff', color: '#6b21a8' },
+  manutencao:       { ...pill, background: '#f1f5f9', color: '#475569' },
+  normal:           { ...pill, background: '#f1f5f9', color: '#475569' },
+  domfer:           { ...pill, background: '#ffedd5', color: '#9a3412' },
 };
 
 const btnAcao = {
-  border: '1px solid #d1d5db', borderRadius: 5, padding: '3px 10px',
-  fontSize: '0.75rem', cursor: 'pointer', background: '#fff', fontWeight: 600,
+  border: `1px solid ${C.border}`, borderRadius: 6, padding: '3px 10px',
+  fontSize: '0.74rem', cursor: 'pointer', background: C.surface, fontWeight: 500, color: C.text,
 };
 
 const TURNO_ORDER = { rota: 0, normal: 1, 'turno extra': 2, 'rodada interna': 3, manutencao: 4 };
@@ -35,8 +47,8 @@ const ALL_COLS = [
 const VISIVEIS_PADRAO = Object.fromEntries(ALL_COLS.map(c => [c.id, true]));
 
 function indicador(colId, ordem) {
-  if (ordem.col !== colId) return <span style={{ color: '#9ca3af', fontSize: '0.65rem', marginLeft: 3 }}>⇅</span>;
-  return <span style={{ color: '#2563eb', fontSize: '0.7rem', marginLeft: 3 }}>{ordem.dir === 'asc' ? '↑' : '↓'}</span>;
+  if (ordem.col !== colId) return <span style={{ color: 'rgba(120,119,160,0.4)', fontSize: '0.6rem', marginLeft: 3 }}>⇅</span>;
+  return <span style={{ color: C.accent, fontSize: '0.68rem', marginLeft: 3 }}>{ordem.dir === 'asc' ? '↑' : '↓'}</span>;
 }
 
 export default function RegistrosTable({
@@ -130,7 +142,8 @@ export default function RegistrosTable({
     userSelect: 'none',
     whiteSpace: 'nowrap',
     textAlign: col.align || undefined,
-    background: (col.sortable && ordem.col === col.id) ? '#dbeafe' : undefined,
+    background: (col.sortable && ordem.col === col.id) ? C.accentSoft : undefined,
+    color: (col.sortable && ordem.col === col.id) ? C.accentDark : undefined,
   });
 
   function renderCelula(col, r) {
@@ -156,18 +169,18 @@ export default function RegistrosTable({
         return (
           <td key={col.id} style={s.td}>
             {r.domingo_feriado
-              ? <span style={{ color: '#92400e', fontWeight: 600 }}>Normal (Dom/Fer)</span>
-              : r.tipo_turno === 'rota'           ? <span style={{ color: '#0369a1', fontWeight: 600 }}>ROTA</span>
-              : r.tipo_turno === 'turno extra'    ? <span style={{ color: '#b45309', fontWeight: 600 }}>Turno Extra</span>
-              : r.tipo_turno === 'rodada interna' ? <span style={{ color: '#7c3aed', fontWeight: 600 }}>Rodada Interna</span>
-              : r.tipo_turno === 'manutencao'     ? <span style={{ color: '#64748b', fontWeight: 600 }}>Manutenção</span>
-              : 'Turno Normal'}
+              ? <span style={turnoPill.domfer}>Dom/Fer</span>
+              : r.tipo_turno === 'rota'           ? <span style={turnoPill.rota}>Rota</span>
+              : r.tipo_turno === 'turno extra'    ? <span style={turnoPill['turno extra']}>Turno Extra</span>
+              : r.tipo_turno === 'rodada interna' ? <span style={turnoPill['rodada interna']}>Rodada Interna</span>
+              : r.tipo_turno === 'manutencao'     ? <span style={turnoPill.manutencao}>Manutenção</span>
+              : <span style={turnoPill.normal}>Normal</span>}
           </td>
         );
       case 'status':
         return (
           <td key={col.id} style={s.td}>
-            <span style={statusStyle[r.status] || {}}>
+            <span style={statusPill[r.status] || pill}>
               {r.status === 'rascunho' ? 'Rascunho' : 'Completo'}
             </span>
           </td>
@@ -185,14 +198,14 @@ export default function RegistrosTable({
               {r.status === 'completo' && (
                 <button onClick={() => onValidar(r)} style={{
                   ...btnAcao,
-                  background: r.validado ? '#dcfce7' : '#fff',
-                  color: r.validado ? '#166534' : '#374151',
-                  borderColor: r.validado ? '#86efac' : '#d1d5db',
+                  background: r.validado ? '#dcfce7' : C.surface,
+                  color: r.validado ? '#166534' : C.muted,
+                  borderColor: r.validado ? '#86efac' : C.border,
                 }}>
                   {r.validado ? '✓ Validado' : 'Validar'}
                 </button>
               )}
-              <button onClick={() => onEditar(r)} style={{ ...btnAcao, color: '#2563eb', borderColor: '#bfdbfe' }}>
+              <button onClick={() => onEditar(r)} style={{ ...btnAcao, color: C.accent, borderColor: C.accentSoft }}>
                 Editar
               </button>
             </div>
@@ -214,25 +227,25 @@ export default function RegistrosTable({
           style={{
             ...s.btnSecondary, fontSize: '0.78rem', padding: '4px 10px',
             display: 'flex', alignItems: 'center', gap: 5,
-            background: ocultasCount > 0 ? '#eff6ff' : '#fff',
-            borderColor: ocultasCount > 0 ? '#93c5fd' : '#d1d5db',
-            color: ocultasCount > 0 ? '#1d4ed8' : '#374151',
+            background: ocultasCount > 0 ? C.accentSoft : C.surface,
+            borderColor: ocultasCount > 0 ? C.accentMid : C.border,
+            color: ocultasCount > 0 ? C.accent : C.text,
           }}
         >
-          ⊞ Colunas {ocultasCount > 0 && <span style={{ background: '#2563eb', color: '#fff', borderRadius: 10, padding: '0 5px', fontSize: '0.7rem' }}>{ocultasCount} oculta{ocultasCount > 1 ? 's' : ''}</span>}
+          ⊞ Colunas {ocultasCount > 0 && <span style={{ background: C.accent, color: '#fff', borderRadius: 10, padding: '0 5px', fontSize: '0.68rem' }}>{ocultasCount} oculta{ocultasCount > 1 ? 's' : ''}</span>}
         </button>
 
         {painelAberto && (
           <div style={{
             position: 'absolute', top: '100%', right: 0, zIndex: 300,
-            background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '12px 16px',
+            background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10,
+            boxShadow: `0 8px 32px ${C.shadowMd}`, padding: '12px 16px',
             minWidth: 260,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#374151' }}>Colunas visíveis</span>
+              <span style={{ fontWeight: 600, fontSize: '0.8rem', color: C.text }}>Colunas visíveis</span>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button style={{ fontSize: '0.72rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                <button style={{ fontSize: '0.72rem', color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   onClick={() => setVisiveis(Object.fromEntries(colsToggle.map(c => [c.id, true])))}>
                   Todas
                 </button>

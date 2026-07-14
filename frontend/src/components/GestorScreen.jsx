@@ -29,8 +29,7 @@ const modalBox = {
 };
 const grid2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 };
 
-export default function GestorScreen() {
-  const [aba, setAba] = useState(0);
+export default function GestorScreen({ aba }) {
   const [registros, setRegistros] = useState([]);
   const [todasRotas, setTodasRotas] = useState([]);
   const [todosContratos, setTodosContratos] = useState([]);
@@ -237,22 +236,6 @@ export default function GestorScreen() {
 
   return (
     <div>
-      {/* Abas */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 20, borderBottom: `2px solid ${C.border}` }}>
-        {ABAS.map((nome, i) => (
-          <button key={i} onClick={() => setAba(i)} style={{
-            padding: '8px 18px', border: 'none', background: 'none', cursor: 'pointer',
-            fontWeight: aba === i ? 600 : 500, fontSize: '0.875rem',
-            color: aba === i ? C.accent : C.muted,
-            borderBottom: aba === i ? `2px solid ${C.accent}` : '2px solid transparent',
-            marginBottom: -2,
-            letterSpacing: '0.01em',
-            transition: 'color 0.15s',
-          }}>
-            {nome}
-          </button>
-        ))}
-      </div>
 
       {aba === 1 && <RegrasScreen />}
       {aba === 2 && <BoletimScreen />}
