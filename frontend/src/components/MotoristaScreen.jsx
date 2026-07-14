@@ -475,9 +475,19 @@ export default function MotoristaScreen({ usuario }) {
     <div style={s.layout}>
       {/* Barra de status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <button style={{ ...s.btn, fontSize: '0.9rem' }} onClick={() => { setFormI({ ...FORM_INICIAR, data: hoje(), horario_saida: agora() }); setErro(''); setView('iniciar'); }}>
+        <button
+          style={{ ...s.btn, fontSize: '0.9rem', opacity: rascunhos.length > 0 ? 0.45 : 1, cursor: rascunhos.length > 0 ? 'not-allowed' : 'pointer' }}
+          disabled={rascunhos.length > 0}
+          title={rascunhos.length > 0 ? 'Finalize o trajeto em andamento antes de iniciar um novo' : ''}
+          onClick={() => { setFormI({ ...FORM_INICIAR, data: hoje(), horario_saida: agora() }); setErro(''); setView('iniciar'); }}
+        >
           + Iniciar novo trajeto
         </button>
+        {rascunhos.length > 0 && (
+          <span style={{ fontSize: '0.8rem', color: '#b45309', fontWeight: 600 }}>
+            ⚠ Finalize o trajeto em andamento antes de iniciar um novo
+          </span>
+        )}
 
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: online ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: online ? '#16a34a' : '#dc2626', display: 'inline-block' }} />
