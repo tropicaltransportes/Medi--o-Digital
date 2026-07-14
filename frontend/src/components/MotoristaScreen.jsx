@@ -181,23 +181,25 @@ export default function MotoristaScreen({ usuario }) {
     setFormI(f => ({ ...f, rota_id: '' }));
   }, [formI.contrato_id]);
 
-  // Auto-preenche KM inicial pelo último registro sem troca do veículo selecionado
-  useEffect(() => {
-    if (!formI.veiculo_id) return;
-    supabase.from('registros').select('km_final')
-      .eq('veiculo_id', formI.veiculo_id)
+  const buscarKmInicial = useCallback(async (veiculoId) => {
+    if (!veiculoId) return;
+    const { data } = await supabase.from('registros').select('km_final')
+      .eq('veiculo_id', veiculoId)
       .eq('status', 'completo')
       .is('veiculo_troca_id', null)
       .not('km_final', 'is', null)
       .order('data', { ascending: false })
       .order('criado_em', { ascending: false })
-      .limit(1)
-      .then(({ data }) => {
-        if (data?.[0]?.km_final != null) {
-          setFormI(f => ({ ...f, km_inicial: String(data[0].km_final) }));
-        }
-      });
-  }, [formI.veiculo_id]);
+      .limit(1);
+    if (data?.[0]?.km_final != null) {
+      setFormI(f => ({ ...f, km_inicial: String(data[0].km_final) }));
+    }
+  }, []);
+
+  // Auto-preenche KM inicial quando o veículo muda manualmente
+  useEffect(() => {
+    buscarKmInicial(formI.veiculo_id);
+  }, [formI.veiculo_id, buscarKmInicial]);
 
   // Auto-preenche KM Final pelo último registro do veículo substituto (sem troca — km_final pertence a ele)
   useEffect(() => {
@@ -498,7 +500,13 @@ export default function MotoristaScreen({ usuario }) {
           style={{ ...s.btn, fontSize: '0.9rem', opacity: rascunhos.length > 0 ? 0.45 : 1, cursor: rascunhos.length > 0 ? 'not-allowed' : 'pointer' }}
           disabled={rascunhos.length > 0}
           title={rascunhos.length > 0 ? 'Finalize o trajeto em andamento antes de iniciar um novo' : ''}
-          onClick={() => { setFormI({ ...FORM_INICIAR, ...sugestoes, data: hoje(), horario_saida: agora() }); setErro(''); setView('iniciar'); }}
+          onClick={() => {
+            const novoForm = { ...FORM_INICIAR, ...sugestoes, data: hoje(), horario_saida: agora() };
+            setFormI(novoForm);
+            if (sugestoes.veiculo_id) buscarKmInicial(sugestoes.veiculo_id);
+            setErro('');
+            setView('iniciar');
+          }}
         >
           + Iniciar novo trajeto
         </button>
