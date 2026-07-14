@@ -8,6 +8,85 @@ const hoje = () => new Date().toISOString().slice(0, 10);
 const agora = () => new Date().toTimeString().slice(0, 5);
 const OFFLINE_KEY = 'medicao_offline_v1';
 
+function VeiculoBusca({ veiculos, value, onChange, excluirId, required }) {
+  const lista = excluirId ? veiculos.filter(v => v.id !== Number(excluirId)) : veiculos;
+  const selecionado = lista.find(v => v.id === Number(value)) || null;
+
+  const [query, setQuery] = useState('');
+  const [aberto, setAberto] = useState(false);
+
+  useEffect(() => {
+    setQuery(selecionado ? `${selecionado.placa} — ${selecionado.descricao}` : '');
+  }, [value, veiculos.length]);
+
+  const filtrados = query.trim() === '' ? lista : lista.filter(v => {
+    const q = query.toLowerCase();
+    return v.placa.toLowerCase().includes(q) || (v.descricao || '').toLowerCase().includes(q);
+  });
+
+  function selecionar(v) {
+    onChange(v.id);
+    setQuery(`${v.placa} — ${v.descricao}`);
+    setAberto(false);
+  }
+
+  function handleInput(e) {
+    setQuery(e.target.value);
+    setAberto(true);
+    if (!e.target.value) onChange('');
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        required={required}
+        value={query}
+        onChange={handleInput}
+        onFocus={() => setAberto(true)}
+        onBlur={() => setTimeout(() => setAberto(false), 150)}
+        placeholder="Placa ou nº de frota..."
+        style={{ ...s.input, width: '100%' }}
+        autoComplete="off"
+      />
+      {/* campo oculto para satisfazer required do form */}
+      <input type="hidden" value={value || ''} required={required} />
+      {aberto && filtrados.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+          background: '#fff', border: '1px solid #d1d5db', borderRadius: 6,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: 220, overflowY: 'auto',
+        }}>
+          {filtrados.map(v => (
+            <div
+              key={v.id}
+              onMouseDown={() => selecionar(v)}
+              style={{
+                padding: '8px 12px', cursor: 'pointer', fontSize: '0.875rem',
+                borderBottom: '1px solid #f3f4f6',
+                background: v.id === Number(value) ? '#eff6ff' : '#fff',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
+              onMouseLeave={e => e.currentTarget.style.background = v.id === Number(value) ? '#eff6ff' : '#fff'}
+            >
+              <span style={{ fontWeight: 600 }}>{v.placa}</span>
+              {v.descricao && <span style={{ color: '#6b7280', marginLeft: 8 }}>{v.descricao}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {aberto && query.trim() !== '' && filtrados.length === 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+          background: '#fff', border: '1px solid #d1d5db', borderRadius: 6,
+          padding: '10px 12px', fontSize: '0.85rem', color: '#6b7280',
+        }}>
+          Nenhum veículo encontrado
+        </div>
+      )}
+    </div>
+  );
+}
+
 function lerOffline() {
   try { return JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]'); }
   catch { return []; }
@@ -249,10 +328,12 @@ export default function MotoristaScreen({ usuario }) {
               </div>
               <div>
                 <label style={s.label}>Veículo</label>
-                <select required value={formI.veiculo_id} onChange={ci('veiculo_id')} style={s.input}>
-                  <option value="">Selecione...</option>
-                  {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.descricao}</option>)}
-                </select>
+                <VeiculoBusca
+                  veiculos={veiculos}
+                  value={formI.veiculo_id}
+                  onChange={id => setFormI(f => ({ ...f, veiculo_id: id }))}
+                  required
+                />
               </div>
               <div>
                 <label style={s.label}>Data</label>
@@ -358,12 +439,12 @@ export default function MotoristaScreen({ usuario }) {
                 <div style={{ padding: 16, borderTop: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                   <div>
                     <label style={s.label}>Veículo substituto</label>
-                    <select value={formF.veiculo_troca_id} onChange={cf('veiculo_troca_id')} style={s.input}>
-                      <option value="">Selecione...</option>
-                      {veiculos.filter(v => v.id !== Number(rascunhoAtivo.veiculo_id)).map(v => (
-                        <option key={v.id} value={v.id}>{v.placa} — {v.descricao}</option>
-                      ))}
-                    </select>
+                    <VeiculoBusca
+                      veiculos={veiculos}
+                      value={formF.veiculo_troca_id}
+                      onChange={id => setFormF(f => ({ ...f, veiculo_troca_id: id }))}
+                      excluirId={rascunhoAtivo.veiculo_id}
+                    />
                   </div>
                   <div>
                     <label style={s.label}>Placa (se não listado)</label>
