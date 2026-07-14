@@ -86,6 +86,8 @@ export default function RegistrosTable({
                     ? <span style={{ color: '#b45309', fontWeight: 600 }}>Turno Extra</span>
                     : r.tipo_turno === 'rodada interna'
                     ? <span style={{ color: '#7c3aed', fontWeight: 600 }}>Rodada Interna</span>
+                    : r.tipo_turno === 'manutencao'
+                    ? <span style={{ color: '#64748b', fontWeight: 600 }}>Manutenção</span>
                     : 'Turno Normal'}
                 </td>
                 <td style={s.td}>

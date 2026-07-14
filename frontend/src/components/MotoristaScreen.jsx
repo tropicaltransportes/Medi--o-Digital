@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { kmRodados } from '../storage.js';
 import RegistrosTable from './RegistrosTable.jsx';
@@ -220,6 +220,22 @@ export default function MotoristaScreen({ usuario }) {
   const rascunhos = registros.filter(r => r.status === 'rascunho');
   const historico = registros.filter(r => r.status !== 'rascunho');
 
+  // Sugestões automáticas baseadas no histórico do motorista
+  const sugestoes = useMemo(() => {
+    if (!registros.length) return {};
+    function maisFrequente(arr) {
+      const counts = {};
+      arr.filter(Boolean).forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+      const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+      return top ? top[0] : '';
+    }
+    const veiculo_id = maisFrequente(registros.map(r => String(r.veiculo_id)));
+    const rota_id    = maisFrequente(registros.map(r => String(r.rota_id)));
+    const rota       = todasRotas.find(r => r.id === Number(rota_id));
+    const contrato_id = rota ? String(rota.contrato_id) : '';
+    return { veiculo_id, rota_id, contrato_id };
+  }, [registros, todasRotas]);
+
   function rotaNome(rota_id) {
     return todasRotas.find(r => r.id === rota_id)?.nome || '—';
   }
@@ -354,12 +370,15 @@ export default function MotoristaScreen({ usuario }) {
                   <option value="normal">Turno Normal</option>
                   <option value="turno extra">Turno Extra</option>
                   <option value="rodada interna">Rodada Interna</option>
+                  <option value="manutencao">Manutenção</option>
                 </select>
               </div>
-              <div>
-                <label style={s.label}>Finalidade</label>
-                <input value={formI.finalidade} onChange={ci('finalidade')} style={s.input} placeholder="Ex: entrega de materiais" />
-              </div>
+              {formI.tipo_turno !== 'manutencao' && (
+                <div>
+                  <label style={s.label}>Finalidade</label>
+                  <input value={formI.finalidade} onChange={ci('finalidade')} style={s.input} placeholder="Ex: entrega de materiais" />
+                </div>
+              )}
             </div>
 
             {erro && <p style={s.errorText}>{erro}</p>}
@@ -479,7 +498,7 @@ export default function MotoristaScreen({ usuario }) {
           style={{ ...s.btn, fontSize: '0.9rem', opacity: rascunhos.length > 0 ? 0.45 : 1, cursor: rascunhos.length > 0 ? 'not-allowed' : 'pointer' }}
           disabled={rascunhos.length > 0}
           title={rascunhos.length > 0 ? 'Finalize o trajeto em andamento antes de iniciar um novo' : ''}
-          onClick={() => { setFormI({ ...FORM_INICIAR, data: hoje(), horario_saida: agora() }); setErro(''); setView('iniciar'); }}
+          onClick={() => { setFormI({ ...FORM_INICIAR, ...sugestoes, data: hoje(), horario_saida: agora() }); setErro(''); setView('iniciar'); }}
         >
           + Iniciar novo trajeto
         </button>

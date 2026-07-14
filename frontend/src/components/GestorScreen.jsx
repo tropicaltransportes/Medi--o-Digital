@@ -15,6 +15,7 @@ const TURNOS = [
   { value: 'normal', label: 'Turno Normal' },
   { value: 'turno extra', label: 'Turno Extra' },
   { value: 'rodada interna', label: 'Rodada Interna' },
+  { value: 'manutencao', label: 'Manutenção' },
 ];
 
 const overlay = {
@@ -197,7 +198,7 @@ export default function GestorScreen() {
           'KM Inicial':   r.km_inicial,
           'KM Final':     r.km_final,
           'KM Rodados':   kmRodados(r),
-          Turno:          r.tipo_turno === 'rota' ? 'ROTA' : r.tipo_turno === 'turno extra' ? 'Turno Extra' : r.tipo_turno === 'rodada interna' ? 'Rodada Interna' : 'Turno Normal',
+          Turno:          r.tipo_turno === 'rota' ? 'ROTA' : r.tipo_turno === 'turno extra' ? 'Turno Extra' : r.tipo_turno === 'rodada interna' ? 'Rodada Interna' : r.tipo_turno === 'manutencao' ? 'Manutenção' : 'Turno Normal',
           'Dom/Feriado':  r.domingo_feriado ? 'Sim' : '',
           Validado:       r.validado ? 'Sim' : '',
           Status:         r.status === 'rascunho' ? 'Rascunho' : 'Completo',
