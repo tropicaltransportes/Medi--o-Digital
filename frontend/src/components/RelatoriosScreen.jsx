@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { formatarMes } from '../storage.js';
 import { s } from '../styles.js';
+import { exportPDF, btnPDF } from '../utils/pdf.js';
 import RelatorioTurnoExtra from './RelatorioTurnoExtra.jsx';
 import RelatorioTurnosRealizados from './RelatorioTurnosRealizados.jsx';
 import RelatorioBuilder from './RelatorioBuilder.jsx';
@@ -36,6 +37,7 @@ const tdRotaNome = { ...td0, fontWeight: 700, background: '#eafaf1' };
 const tdLocal    = { ...td0, color: '#555', background: '#eafaf1' };
 
 export default function RelatoriosScreen() {
+  const domFerRef = useRef(null);
   const [subAba, setSubAba] = useState(0);
 
   // Filtros compartilhados entre os dois relatórios
@@ -178,9 +180,13 @@ export default function RelatoriosScreen() {
 
           {!carregando && rotas.length > 0 && (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', background: '#1a5276', color: '#fff', borderRadius: '8px 8px 0 0', padding: '10px 16px', fontWeight: 700, fontSize: '0.95rem', marginTop: 8 }}>
+              <div ref={domFerRef}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1a5276', color: '#fff', borderRadius: '8px 8px 0 0', padding: '10px 16px', fontWeight: 700, fontSize: '0.95rem', marginTop: 8 }}>
                 <span>CONTROLE DE TURNO NORMAL (DOMINGOS E FERIADOS) — {contratoNome.toUpperCase()}</span>
-                <span>{formatarMes(mes).toUpperCase()}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontWeight: 400, opacity: 0.85 }}>{formatarMes(mes).toUpperCase()}</span>
+                  <button data-pdf-hide style={{ ...btnPDF, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => exportPDF(domFerRef.current, `dom-feriados-${mes}.pdf`)}>⬇ PDF</button>
+                </div>
               </div>
 
               <div style={{ overflowX: 'auto', border: '1px solid #154360', borderTop: 0, borderRadius: '0 0 8px 8px', marginBottom: 24 }}>
@@ -237,6 +243,7 @@ export default function RelatoriosScreen() {
                     </tr>
                   </tbody>
                 </table>
+              </div>
               </div>
             </>
           )}

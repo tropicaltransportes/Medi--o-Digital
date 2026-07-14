@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { s } from '../styles.js';
+import { exportPDF, btnPDF } from '../utils/pdf.js';
 
 const OPCOES_LINHAS = [
   { id: 'rota',       label: 'Rota' },
@@ -150,6 +151,7 @@ function getColLabel(key, colunas) {
 }
 
 export default function RelatorioBuilder({ contratos }) {
+  const resultadoRef = useRef(null);
   const [config,     setConfig]    = useState(CONFIG_INICIAL);
   const [salvos,     setSalvos]    = useState(loadSalvos);
   const [nomeSalvar, setNomeSalvar] = useState('');
@@ -510,9 +512,14 @@ export default function RelatorioBuilder({ contratos }) {
             {carregando ? 'Gerando...' : '▶ Gerar Relatório'}
           </button>
           {resultado && resultado.tipo !== 'vazio' && !salvando && (
-            <button style={{ ...s.btnSecondary, fontSize: '0.78rem' }} onClick={() => setSalvando(true)}>
-              ☆ Salvar configuração
-            </button>
+            <>
+              <button style={{ ...s.btnSecondary, fontSize: '0.78rem' }} onClick={() => setSalvando(true)}>
+                ☆ Salvar configuração
+              </button>
+              <button style={{ ...btnPDF, fontSize: '0.78rem' }} onClick={() => exportPDF(resultadoRef.current, `relatorio-${config.dataInicial || 'export'}.pdf`)}>
+                ⬇ PDF
+              </button>
+            </>
           )}
           {salvando && (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -542,17 +549,19 @@ export default function RelatorioBuilder({ contratos }) {
         <PreviewRelatorio config={config} />
       )}
 
-      {resultado && resultado.tipo === 'odometro' && (
-        <ResultadoOdometro resultado={resultado} fmtNum={fmtNum} config={config} />
-      )}
+      <div ref={resultadoRef}>
+        {resultado && resultado.tipo === 'odometro' && (
+          <ResultadoOdometro resultado={resultado} fmtNum={fmtNum} config={config} />
+        )}
 
-      {resultado && resultado.tipo === 'lista' && (
-        <ResultadoLista resultado={resultado} config={config} fmtNum={fmtNum} calcKm={calcKm} calcHoras={calcHoras} />
-      )}
+        {resultado && resultado.tipo === 'lista' && (
+          <ResultadoLista resultado={resultado} config={config} fmtNum={fmtNum} calcKm={calcKm} calcHoras={calcHoras} />
+        )}
 
-      {resultado && resultado.tipo === 'pivot' && (
-        <ResultadoPivot resultado={resultado} config={config} isHeat={isHeat} />
-      )}
+        {resultado && resultado.tipo === 'pivot' && (
+          <ResultadoPivot resultado={resultado} config={config} isHeat={isHeat} />
+        )}
+      </div>
     </div>
   );
 }

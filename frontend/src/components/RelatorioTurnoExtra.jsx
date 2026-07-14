@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { s } from '../styles.js';
+import { exportPDF, btnPDF } from '../utils/pdf.js';
 
 const DIAS_PT  = ['dom','seg','ter','qua','qui','sex','sáb'];
 const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -59,6 +60,7 @@ const tdTot = {
 };
 
 export default function RelatorioTurnoExtra({ contratoId, mes }) {
+  const tabelaRef = useRef(null);
   const [rotas,      setRotas]      = useState([]);
   const [veiculos,   setVeiculos]   = useState([]);
   const [registros,  setRegistros]  = useState([]);
@@ -174,7 +176,7 @@ export default function RelatorioTurnoExtra({ contratoId, mes }) {
   );
 
   return (
-    <div>
+    <div ref={tabelaRef}>
       {/* Legenda */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10, fontSize: '0.76rem', alignItems: 'center', color: '#374151' }}>
         {[
@@ -189,6 +191,7 @@ export default function RelatorioTurnoExtra({ contratoId, mes }) {
           </div>
         ))}
         <span style={{ color: '#9ca3af', marginLeft: 4 }}>· Clique numa célula para adicionar anotação</span>
+        <button data-pdf-hide style={btnPDF} onClick={() => exportPDF(tabelaRef.current, `turno-extra-${mes}.pdf`)}>⬇ PDF</button>
       </div>
 
       <div style={{ overflowX: 'auto', border: '1px solid #1e3a5f', borderRadius: 8 }}>

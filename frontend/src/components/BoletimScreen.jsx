@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { kmRodados, formatarMes } from '../storage.js';
 import { s } from '../styles.js';
+import { exportPDF, btnPDF } from '../utils/pdf.js';
 
 const fmt = (n) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -49,6 +50,7 @@ function QuantCell({ value, autoValue, onChange, onReset }) {
 }
 
 export default function BoletimScreen() {
+  const boletimRef = useRef(null);
   const [contratos, setContratos] = useState([]);
   const [contratoId, setContratoId] = useState('');
   const [mes, setMes] = useState('');
@@ -262,11 +264,15 @@ export default function BoletimScreen() {
       )}
 
       {!carregando && linhas.length > 0 && (
+        <div ref={boletimRef}>
         <>
           {/* Cabeçalho */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', background: '#166534', color: '#fff', borderRadius: '8px 8px 0 0', padding: '10px 16px', fontWeight: 700, fontSize: '1rem', marginTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#166534', color: '#fff', borderRadius: '8px 8px 0 0', padding: '10px 16px', fontWeight: 700, fontSize: '1rem', marginTop: 8 }}>
             <span>BOLETIM DE MEDIÇÃO — CONTRATO {contratoNome.toUpperCase()}</span>
-            <span>{formatarMes(mes).toUpperCase()}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontWeight: 400, opacity: 0.85 }}>{formatarMes(mes).toUpperCase()}</span>
+              <button data-pdf-hide style={{ ...btnPDF, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => exportPDF(boletimRef.current, `boletim-${mes}.pdf`, false)}>⬇ PDF</button>
+            </div>
           </div>
 
           {/* Tabela principal */}
@@ -402,6 +408,7 @@ export default function BoletimScreen() {
             </p>
           )}
         </>
+        </div>
       )}
     </div>
   );
