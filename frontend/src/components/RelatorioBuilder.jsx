@@ -26,12 +26,29 @@ const OPCOES_METRICAS = [
 const OPCOES_VIZ = [
   { id: 'tabela',  label: 'Tabela' },
   { id: 'heatmap', label: 'Heat Map' },
+  { id: 'lista',   label: 'Lista Detalhada' },
+];
+
+const COLUNAS_LISTA = [
+  { id: 'rota',       label: 'Rota',          default: true },
+  { id: 'veiculo',    label: 'Veículo',        default: true },
+  { id: 'data',       label: 'Data',           default: true },
+  { id: 'saida',      label: 'Saída',          default: false },
+  { id: 'chegada',    label: 'Chegada',        default: false },
+  { id: 'km_ini',     label: 'KM Inicial',     default: true },
+  { id: 'km_fin',     label: 'KM Final',       default: true },
+  { id: 'km_rod',     label: 'KM Total',       default: true },
+  { id: 'tipo_turno', label: 'Tipo de Turno',  default: false },
+  { id: 'status',     label: 'Status',         default: false },
+  { id: 'obs',        label: 'Finalidade/Obs', default: false },
 ];
 
 const TIPOS_TURNO   = ['normal', 'turno extra', 'rodada interna', 'rota', 'manutencao'];
 const TIPOS_VEICULO = ['RODOVIÁRIO', 'SEMI RODOVIÁRIO', 'URBANO', 'MICRO', 'VAN', 'PEQUENO PORTE'];
-const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const MESES_PT    = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const DIAS_SEMANA   = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const MESES_PT      = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+const COLUNAS_LISTA_PADRAO = Object.fromEntries(COLUNAS_LISTA.map(c => [c.id, c.default]));
 
 const CONFIG_INICIAL = {
   linhas: 'rota',
@@ -44,6 +61,7 @@ const CONFIG_INICIAL = {
   filtroTipoTurno: '',
   filtroStatus: '',
   filtroTipoVeiculo: '',
+  colunasLista: COLUNAS_LISTA_PADRAO,
 };
 
 const LS_KEY = 'medicao_relatorios_salvos';
@@ -82,6 +100,10 @@ function formatarValor(val, metrica) {
   if (metrica === 'km')    return `${Math.round(val)} km`;
   if (metrica === 'horas') return `${val.toFixed(1)} h`;
   return String(Math.round(val));
+}
+
+function fmtNum(n) {
+  return n != null ? Number(n).toLocaleString('pt-BR') : '—';
 }
 
 function heatBg(val, maxVal) {
@@ -127,16 +149,26 @@ function getColLabel(key, colunas) {
 }
 
 export default function RelatorioBuilder({ contratos }) {
-  const [config,    setConfig]    = useState(CONFIG_INICIAL);
-  const [salvos,    setSalvos]    = useState(loadSalvos);
+  const [config,     setConfig]    = useState(CONFIG_INICIAL);
+  const [salvos,     setSalvos]    = useState(loadSalvos);
   const [nomeSalvar, setNomeSalvar] = useState('');
-  const [salvando,  setSalvando]  = useState(false);
-  const [resultado, setResultado] = useState(null);
+  const [salvando,   setSalvando]  = useState(false);
+  const [resultado,  setResultado] = useState(null);
   const [carregando, setCarregando] = useState(false);
-  const [erro,      setErro]      = useState('');
+  const [erro,       setErro]      = useState('');
+
+  const isLista = config.visualizacao === 'lista';
 
   function setC(field, val) {
     setConfig(prev => ({ ...prev, [field]: val }));
+    setResultado(null);
+  }
+
+  function toggleColunaLista(id) {
+    setConfig(prev => ({
+      ...prev,
+      colunasLista: { ...prev.colunasLista, [id]: !prev.colunasLista[id] },
+    }));
     setResultado(null);
   }
 
@@ -163,32 +195,31 @@ export default function RelatorioBuilder({ contratos }) {
 
     const { data: rotasData } = await supabase.from('rotas').select('id, nome, contrato_id, configuracao').order('nome');
     const { data: veicData }  = await supabase.from('veiculos').select('id, placa').order('placa');
-    const rotas    = rotasData || [];
-    const veiculos = veicData  || [];
+    const todasRotas = rotasData || [];
+    const veiculos   = veicData  || [];
 
     let rotasContrato = config.contratoId
-      ? rotas.filter(r => r.contrato_id === Number(config.contratoId))
-      : rotas;
-    // Filtro por tipo de veículo (via rotas.configuracao)
-    if (config.filtroTipoVeiculo) {
+      ? todasRotas.filter(r => r.contrato_id === Number(config.contratoId))
+      : todasRotas;
+    if (config.filtroTipoVeiculo)
       rotasContrato = rotasContrato.filter(r => r.configuracao === config.filtroTipoVeiculo);
-    }
+
     const rotaIds = rotasContrato.map(r => r.id);
 
-    if (config.contratoId && rotaIds.length === 0) {
-      setResultado({ rowKeys: [], rowMeta: {}, colKeys: [], colLabels: {}, dados: {}, maxVal: 0 });
+    if ((config.contratoId || config.filtroTipoVeiculo) && rotaIds.length === 0) {
+      setResultado({ tipo: 'vazio' });
       setCarregando(false);
       return;
     }
 
     let query = supabase.from('registros')
-      .select('id, rota_id, veiculo_id, data, horario_saida, horario_chegada, km_inicial, km_final, tipo_turno, status')
+      .select('id, rota_id, veiculo_id, data, horario_saida, horario_chegada, km_inicial, km_final, tipo_turno, status, finalidade, observacao')
       .gte('data', config.dataInicial)
       .lte('data', config.dataFinal);
 
-    if (config.contratoId)       query = query.in('rota_id', rotaIds);
-    if (config.filtroTipoTurno)  query = query.eq('tipo_turno', config.filtroTipoTurno);
-    if (config.filtroStatus)     query = query.eq('status', config.filtroStatus);
+    if (config.contratoId || config.filtroTipoVeiculo) query = query.in('rota_id', rotaIds);
+    if (config.filtroTipoTurno) query = query.eq('tipo_turno', config.filtroTipoTurno);
+    if (config.filtroStatus)    query = query.eq('status', config.filtroStatus);
 
     const { data: regs, error } = await query;
     if (error) {
@@ -197,12 +228,36 @@ export default function RelatorioBuilder({ contratos }) {
       return;
     }
 
+    // ── MODO LISTA DETALHADA ──
+    if (isLista) {
+      const regsOrdenados = [...(regs || [])].sort((a, b) => {
+        const { label: la } = getRowKey(a, config.linhas, todasRotas, veiculos);
+        const { label: lb } = getRowKey(b, config.linhas, todasRotas, veiculos);
+        const cmp = la.localeCompare(lb);
+        if (cmp !== 0) return cmp;
+        return (a.data + (a.horario_saida || '')).localeCompare(b.data + (b.horario_saida || ''));
+      });
+
+      // Agrupa por linhas para criar seções com cabeçalho
+      const gruposMap = new Map();
+      for (const r of regsOrdenados) {
+        const { key, label } = getRowKey(r, config.linhas, todasRotas, veiculos);
+        if (!gruposMap.has(key)) gruposMap.set(key, { key, label, regs: [] });
+        gruposMap.get(key).regs.push(r);
+      }
+
+      setResultado({ tipo: 'lista', grupos: [...gruposMap.values()], rotas: todasRotas, veiculos });
+      setCarregando(false);
+      return;
+    }
+
+    // ── MODO PIVOT (tabela / heatmap) ──
     const dados    = {};
     const rowMeta  = {};
     const colKeysSet = new Set();
 
     for (const r of regs || []) {
-      const { key: rk, label: rl } = getRowKey(r, config.linhas, rotas, veiculos);
+      const { key: rk, label: rl } = getRowKey(r, config.linhas, todasRotas, veiculos);
       const ck  = getColKey(r, config.colunas);
       const val = metricaValor(r, config.metrica);
       if (!dados[rk]) dados[rk] = {};
@@ -227,7 +282,7 @@ export default function RelatorioBuilder({ contratos }) {
       for (const ck of colKeys)
         if ((dados[rk]?.[ck] || 0) > maxVal) maxVal = dados[rk][ck];
 
-    setResultado({ rowKeys, rowMeta, colKeys, colLabels, dados, maxVal });
+    setResultado({ tipo: 'pivot', rowKeys, rowMeta, colKeys, colLabels, dados, maxVal });
     setCarregando(false);
   }
 
@@ -259,16 +314,13 @@ export default function RelatorioBuilder({ contratos }) {
             {salvos.map(item => (
               <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <button
-                  onClick={() => { setConfig(item.config); setResultado(null); }}
+                  onClick={() => { setConfig({ ...CONFIG_INICIAL, ...item.config }); setResultado(null); }}
                   style={{ fontSize: '0.72rem', padding: '2px 10px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, color: '#1d4ed8', cursor: 'pointer' }}
                 >
                   {item.nome}
                 </button>
-                <button
-                  onClick={() => excluirSalvo(item.id)}
-                  title="Remover"
-                  style={{ fontSize: '0.65rem', padding: '1px 5px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}
-                >
+                <button onClick={() => excluirSalvo(item.id)} title="Remover"
+                  style={{ fontSize: '0.65rem', padding: '1px 5px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>
                   ×
                 </button>
               </div>
@@ -301,26 +353,30 @@ export default function RelatorioBuilder({ contratos }) {
 
         <div style={{ height: 1, background: '#e5e7eb', margin: '4px 0 10px' }} />
 
-        {/* Dimensões e visualização */}
+        {/* Dimensões, visualização e filtros */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px 16px' }}>
           <div>
-            <label style={s.label}>Agrupar linhas por</label>
+            <label style={s.label}>{isLista ? 'Agrupar por' : 'Agrupar linhas por'}</label>
             <select value={config.linhas} onChange={e => setC('linhas', e.target.value)} style={s.input}>
               {OPCOES_LINHAS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
             </select>
           </div>
-          <div>
-            <label style={s.label}>Agrupar colunas por</label>
-            <select value={config.colunas} onChange={e => setC('colunas', e.target.value)} style={s.input}>
-              {OPCOES_COLUNAS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={s.label}>Métrica</label>
-            <select value={config.metrica} onChange={e => setC('metrica', e.target.value)} style={s.input}>
-              {OPCOES_METRICAS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </select>
-          </div>
+          {!isLista && (
+            <div>
+              <label style={s.label}>Agrupar colunas por</label>
+              <select value={config.colunas} onChange={e => setC('colunas', e.target.value)} style={s.input}>
+                {OPCOES_COLUNAS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+              </select>
+            </div>
+          )}
+          {!isLista && (
+            <div>
+              <label style={s.label}>Métrica</label>
+              <select value={config.metrica} onChange={e => setC('metrica', e.target.value)} style={s.input}>
+                {OPCOES_METRICAS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label style={s.label}>Visualização</label>
             <select value={config.visualizacao} onChange={e => setC('visualizacao', e.target.value)} style={s.input}>
@@ -351,13 +407,33 @@ export default function RelatorioBuilder({ contratos }) {
           </div>
         </div>
 
+        {/* Seletor de colunas para Lista Detalhada */}
+        {isLista && (
+          <div style={{ marginTop: 12, padding: '10px 12px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151', marginBottom: 8 }}>Colunas a exibir</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px' }}>
+              {COLUNAS_LISTA.map(col => (
+                <label key={col.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', color: '#374151', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={config.colunasLista?.[col.id] ?? col.default}
+                    onChange={() => toggleColunaLista(col.id)}
+                    style={{ width: 14, height: 14, cursor: 'pointer' }}
+                  />
+                  {col.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         {erro && <p style={{ color: '#dc2626', fontSize: '0.82rem', marginTop: 8, marginBottom: 0 }}>{erro}</p>}
 
         <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <button style={s.btn} onClick={gerar} disabled={carregando}>
             {carregando ? 'Gerando...' : '▶ Gerar Relatório'}
           </button>
-          {resultado && !salvando && (
+          {resultado && resultado.tipo !== 'vazio' && !salvando && (
             <button style={{ ...s.btnSecondary, fontSize: '0.78rem' }} onClick={() => setSalvando(true)}>
               ☆ Salvar configuração
             </button>
@@ -379,21 +455,156 @@ export default function RelatorioBuilder({ contratos }) {
         </div>
       </section>
 
-      {resultado && (
-        <ResultadoTabela
-          resultado={resultado}
-          config={config}
-          isHeat={isHeat}
-        />
+      {resultado && resultado.tipo === 'vazio' && (
+        <div style={{ ...s.card, textAlign: 'center', color: '#6b7280', padding: '32px 24px' }}>
+          Nenhum dado encontrado para os filtros selecionados.
+        </div>
+      )}
+
+      {resultado && resultado.tipo === 'lista' && (
+        <ResultadoLista resultado={resultado} config={config} fmtNum={fmtNum} calcKm={calcKm} calcHoras={calcHoras} />
+      )}
+
+      {resultado && resultado.tipo === 'pivot' && (
+        <ResultadoPivot resultado={resultado} config={config} isHeat={isHeat} />
       )}
     </div>
   );
 }
 
-function ResultadoTabela({ resultado, config, isHeat }) {
+// ── LISTA DETALHADA ──────────────────────────────────────────────────────────
+
+function ResultadoLista({ resultado, config, fmtNum, calcKm, calcHoras }) {
+  const { grupos, rotas, veiculos } = resultado;
+  const cols = config.colunasLista || COLUNAS_LISTA_PADRAO;
+
+  const visíveis = COLUNAS_LISTA.filter(c => cols[c.id]);
+
+  const thL = {
+    padding: '5px 8px', fontSize: '0.7rem', fontWeight: 700,
+    background: '#1a5276', color: '#fff', border: '1px solid #154360',
+    whiteSpace: 'nowrap', textAlign: 'left',
+  };
+  const thR = { ...thL, textAlign: 'right' };
+  const td0 = { padding: '4px 8px', fontSize: '0.78rem', border: '1px solid #e5e7eb', whiteSpace: 'nowrap' };
+  const tdR = { ...td0, textAlign: 'right' };
+
+  function placaVeiculo(vid) { return veiculos.find(v => v.id === vid)?.placa || '—'; }
+  function nomeRota(rid)     { return rotas.find(r => r.id === rid)?.nome || '—'; }
+
+  function celula(col, r, par) {
+    const bg = par ? '#fff' : '#f8fafc';
+    switch (col.id) {
+      case 'rota':       return <td key={col.id} style={{ ...td0, background: bg }}>{nomeRota(r.rota_id)}</td>;
+      case 'veiculo':    return <td key={col.id} style={{ ...td0, background: bg }}>{placaVeiculo(r.veiculo_id)}</td>;
+      case 'data':       return <td key={col.id} style={{ ...td0, background: bg }}>{r.data}</td>;
+      case 'saida':      return <td key={col.id} style={{ ...td0, background: bg }}>{r.horario_saida?.slice(0,5) || '—'}</td>;
+      case 'chegada':    return <td key={col.id} style={{ ...td0, background: bg }}>{r.horario_chegada?.slice(0,5) || '—'}</td>;
+      case 'km_ini':     return <td key={col.id} style={{ ...tdR, background: bg }}>{fmtNum(r.km_inicial)}</td>;
+      case 'km_fin':     return <td key={col.id} style={{ ...tdR, background: bg }}>{r.km_final != null ? fmtNum(r.km_final) : '—'}</td>;
+      case 'km_rod':     return <td key={col.id} style={{ ...tdR, fontWeight: 600, background: bg }}>{fmtNum(calcKm(r))}</td>;
+      case 'tipo_turno': return <td key={col.id} style={{ ...td0, background: bg }}>{r.tipo_turno || '—'}</td>;
+      case 'status':     return <td key={col.id} style={{ ...td0, background: bg }}>{r.status || '—'}</td>;
+      case 'obs':        return <td key={col.id} style={{ ...td0, background: bg, color: '#6b7280' }}>{[r.finalidade, r.observacao].filter(Boolean).join(' · ') || '—'}</td>;
+      default:           return null;
+    }
+  }
+
+  const totalGeral = grupos.reduce((acc, g) => acc + g.regs.reduce((a, r) => a + calcKm(r), 0), 0);
+  const mostrarKmRod = cols['km_rod'];
+
+  return (
+    <div style={{ marginTop: 8, overflowX: 'auto', border: '1px solid #154360', borderRadius: 8, marginBottom: 24 }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+        <thead>
+          <tr>
+            {visíveis.map(col => (
+              <th key={col.id} style={['km_ini','km_fin','km_rod'].includes(col.id) ? thR : thL}>
+                {col.label.toUpperCase()}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {grupos.map(grupo => {
+            const kmGrupo = grupo.regs.reduce((acc, r) => acc + calcKm(r), 0);
+            const horasGrupo = grupo.regs.reduce((acc, r) => acc + calcHoras(r), 0);
+            return (
+              <React.Fragment key={grupo.key}>
+                {/* Cabeçalho do grupo */}
+                <tr>
+                  <td
+                    colSpan={visíveis.length}
+                    style={{
+                      padding: '5px 10px', fontWeight: 700, fontSize: '0.8rem',
+                      background: '#1a5276', color: '#fff',
+                      border: '1px solid #154360',
+                    }}
+                  >
+                    {grupo.label}
+                    <span style={{ fontWeight: 400, marginLeft: 12, opacity: 0.8, fontSize: '0.72rem' }}>
+                      {grupo.regs.length} registro{grupo.regs.length !== 1 ? 's' : ''}
+                      {mostrarKmRod ? ` · ${fmtNum(Math.round(kmGrupo))} km` : ''}
+                    </span>
+                  </td>
+                </tr>
+                {/* Linhas do grupo */}
+                {grupo.regs.map((r, ri) => (
+                  <tr key={r.id}>
+                    {visíveis.map(col => celula(col, r, ri % 2 === 0))}
+                  </tr>
+                ))}
+                {/* Subtotal do grupo */}
+                {grupo.regs.length > 1 && (
+                  <tr>
+                    {visíveis.map(col => {
+                      if (col.id === 'km_rod') return (
+                        <td key={col.id} style={{ ...tdR, fontWeight: 700, background: '#f0fdf4', color: '#15803d' }}>
+                          {fmtNum(Math.round(kmGrupo))}
+                        </td>
+                      );
+                      const isFirst = col.id === visíveis[0].id;
+                      return (
+                        <td key={col.id} style={{ ...td0, fontWeight: isFirst ? 700 : 400, background: '#f0fdf4', color: isFirst ? '#15803d' : '#9ca3af', fontSize: '0.72rem' }}>
+                          {isFirst ? 'SUBTOTAL' : ''}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })}
+          {/* Total geral */}
+          {mostrarKmRod && (
+            <tr style={{ background: '#dbeafe' }}>
+              {visíveis.map(col => {
+                if (col.id === 'km_rod') return (
+                  <td key={col.id} style={{ ...tdR, fontWeight: 700, background: '#dbeafe', color: '#1a5276', fontSize: '0.88rem' }}>
+                    {fmtNum(Math.round(totalGeral))}
+                  </td>
+                );
+                const isFirst = col.id === visíveis[0].id;
+                return (
+                  <td key={col.id} style={{ ...td0, fontWeight: isFirst ? 700 : 400, background: '#dbeafe', color: '#1a5276' }}>
+                    {isFirst ? 'TOTAL GERAL' : ''}
+                  </td>
+                );
+              })}
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── PIVOT (tabela / heatmap) ─────────────────────────────────────────────────
+
+function ResultadoPivot({ resultado, config, isHeat }) {
   const { rowKeys, rowMeta, colKeys, colLabels, dados, maxVal } = resultado;
 
-  const colsLabel = OPCOES_LINHAS.find(o => o.id === config.linhas)?.label || 'Linha';
+  const colsLabel  = OPCOES_LINHAS.find(o => o.id === config.linhas)?.label || 'Linha';
   const semColunas = config.colunas === 'nenhuma';
 
   if (!rowKeys.length) return (
@@ -421,8 +632,8 @@ function ResultadoTabela({ resultado, config, isHeat }) {
             { bg: '#dbeafe', label: '< 25% do máximo' },
             { bg: '#93c5fd', label: '25–50%' },
             { bg: '#3b82f6', label: '50–75%' },
-            { bg: '#1d4ed8', color: '#fff', label: '> 75%' },
-          ].map(({ bg, color, label }) => (
+            { bg: '#1d4ed8', label: '> 75%' },
+          ].map(({ bg, label }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 12, height: 12, background: bg, borderRadius: 2 }} />
               <span>{label}</span>
@@ -446,7 +657,7 @@ function ResultadoTabela({ resultado, config, isHeat }) {
           </thead>
           <tbody>
             {rowKeys.map((rk, ri) => {
-              const par  = ri % 2 === 0;
+              const par      = ri % 2 === 0;
               const rowTotal = colKeys.reduce((acc, ck) => acc + (dados[rk]?.[ck] || 0), 0);
               return (
                 <tr key={rk}>
@@ -470,7 +681,6 @@ function ResultadoTabela({ resultado, config, isHeat }) {
               );
             })}
 
-            {/* Linha de totais das colunas */}
             {!semColunas && (
               <tr style={{ background: '#dbeafe' }}>
                 <td style={{ ...td0, fontWeight: 700, background: '#dbeafe', position: 'sticky', left: 0, zIndex: 1 }}>TOTAL</td>
