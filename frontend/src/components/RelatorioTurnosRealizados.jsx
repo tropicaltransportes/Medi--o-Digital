@@ -25,17 +25,10 @@ function fmtDia(dateStr) {
   };
 }
 
-function cellBg(count, isDomFer, par) {
-  if (count >= 3) return '#15803d';
-  if (count === 2) return '#4ade80';
-  if (count === 1) return '#dcfce7';
-  if (isDomFer)    return '#fff7ed';
+function cellBg(ativo, isDomFer, par) {
+  if (ativo)    return '#4ade80';
+  if (isDomFer) return '#fff7ed';
   return par ? '#fff' : '#f8fafc';
-}
-function cellColor(count) {
-  if (count >= 3) return '#fff';
-  if (count >= 1) return '#14532d';
-  return '#6b7280';
 }
 
 const W_NOME  = 140;
@@ -178,17 +171,16 @@ export default function RelatorioTurnosRealizados({ contratoId, mes }) {
       {/* Legenda */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10, fontSize: '0.76rem', alignItems: 'center', color: '#374151' }}>
         {[
+          { bg: '#fff', border: '1px solid #e5e7eb', label: 'Rota inativa' },
           { bg: '#fff7ed', border: '1px solid #fed7aa', label: 'Dom / Feriado' },
-          { bg: '#dcfce7', border: '1px solid #86efac', label: '1 turno realizado' },
-          { bg: '#4ade80', label: '2 turnos realizados' },
-          { bg: '#15803d', color: '#fff', label: '3+ turnos realizados' },
-        ].map(({ bg, border, color, label }) => (
+          { bg: '#4ade80', label: 'Rota ativa' },
+        ].map(({ bg, border, label }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 14, height: 14, background: bg, border: border || 'none', borderRadius: 3 }} />
             <span>{label}</span>
           </div>
         ))}
-        <span style={{ color: '#9ca3af', marginLeft: 4 }}>· Clique numa célula para adicionar anotação</span>
+        <span style={{ color: '#9ca3af', marginLeft: 4 }}>· Passe o mouse para ver detalhes · Clique para adicionar anotação</span>
       </div>
 
       <div style={{ overflowX: 'auto', border: '1px solid #14532d', borderRadius: 8 }}>
@@ -214,20 +206,20 @@ export default function RelatorioTurnosRealizados({ contratoId, mes }) {
             {rotas.map((rota, ri) => {
               const par = ri % 2 === 0;
               const rotaRegs = matriz[rota.id] || {};
-              const total = Object.values(rotaRegs).reduce((acc, arr) => acc + arr.length, 0);
+              // Total = número de dias em que a rota esteve ativa
+              const total = dias.filter(dia => (rotaRegs[dia] || []).length > 0).length;
               return (
                 <tr key={rota.id}>
                   <td style={{ ...tdFix(0, par), fontWeight: 600, color: '#14532d' }}>{rota.nome}</td>
                   <td style={{ ...tdFix(W_NOME, par), color: '#6b7280', borderLeft: '2px solid #e5e7eb' }}>{rota.local || '—'}</td>
                   {dias.map(dia => {
-                    const regs = rotaRegs[dia] || [];
-                    const count = regs.length;
+                    const regs     = rotaRegs[dia] || [];
+                    const ativo    = regs.length > 0;
                     const isDomFer = domFerSet.has(dia);
-                    const key = `${rota.id}_${dia}`;
+                    const key      = `${rota.id}_${dia}`;
                     const anotacao = anotacoes[key] || '';
-                    const isEdit = editando?.rotaId === rota.id && editando?.data === dia;
-                    const bg = cellBg(count, isDomFer, par);
-                    const fg = cellColor(count);
+                    const isEdit   = editando?.rotaId === rota.id && editando?.data === dia;
+                    const bg       = cellBg(ativo, isDomFer, par);
 
                     return (
                       <td
@@ -236,9 +228,9 @@ export default function RelatorioTurnosRealizados({ contratoId, mes }) {
                           width: W_DIA, minWidth: W_DIA, maxWidth: W_DIA,
                           padding: '2px', textAlign: 'center', verticalAlign: 'middle',
                           border: '1px solid #e5e7eb', cursor: 'pointer',
-                          background: bg, color: fg,
+                          background: bg,
                         }}
-                        onMouseEnter={e => count > 0 && handleCellEnter(e, regs)}
+                        onMouseEnter={e => ativo && handleCellEnter(e, regs)}
                         onMouseLeave={() => setTooltip(null)}
                         onClick={() => { setTooltip(null); setEditando({ rotaId: rota.id, data: dia, texto: anotacao }); }}
                       >
@@ -252,14 +244,11 @@ export default function RelatorioTurnosRealizados({ contratoId, mes }) {
                             onClick={e => e.stopPropagation()}
                           />
                         ) : (
-                          <div style={{ lineHeight: 1.2, userSelect: 'none' }}>
-                            {count > 0 && <div style={{ fontWeight: 700, fontSize: '0.8rem' }}>{count}</div>}
-                            {anotacao && (
-                              <div style={{ fontSize: '0.56rem', fontWeight: 400, color: count >= 2 ? 'rgba(255,255,255,0.9)' : '#4b5563', marginTop: 1 }}>
-                                {anotacao}
-                              </div>
-                            )}
-                          </div>
+                          anotacao && (
+                            <div style={{ fontSize: '0.56rem', fontWeight: 500, color: '#14532d', lineHeight: 1.2, padding: '1px', userSelect: 'none' }}>
+                              {anotacao}
+                            </div>
+                          )
                         )}
                       </td>
                     );
@@ -274,7 +263,8 @@ export default function RelatorioTurnosRealizados({ contratoId, mes }) {
             <tr style={{ background: '#dcfce7' }}>
               <td style={{ ...tdFix(0, false), fontWeight: 700, color: '#14532d', background: '#dcfce7' }} colSpan={2}>TOTAL</td>
               {dias.map(dia => {
-                const t = rotas.reduce((acc, r) => acc + (matriz[r.id]?.[dia]?.length || 0), 0);
+                // Quantas rotas estiveram ativas neste dia
+                const t = rotas.filter(r => (matriz[r.id]?.[dia] || []).length > 0).length;
                 return (
                   <td key={dia} style={{ ...tdTot, background: '#dcfce7', color: t > 0 ? '#14532d' : '#d1d5db', fontSize: '0.75rem' }}>
                     {t > 0 ? t : '—'}
@@ -282,7 +272,8 @@ export default function RelatorioTurnosRealizados({ contratoId, mes }) {
                 );
               })}
               <td style={{ ...tdTot, background: '#86efac', color: '#052e16', fontSize: '0.9rem' }}>
-                {registros.length > 0 ? registros.length : '—'}
+                {/* Total = soma dos dias ativos de todas as rotas */}
+                {rotas.reduce((acc, r) => acc + dias.filter(dia => (matriz[r.id]?.[dia] || []).length > 0).length, 0) || '—'}
               </td>
             </tr>
           </tbody>
