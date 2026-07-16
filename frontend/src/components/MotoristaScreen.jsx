@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { kmRodados } from '../storage.js';
+import { cacheSave, cacheLoad, queuePush, queueGetAll, queueRemove } from '../db.js';
 import RegistrosTable from './RegistrosTable.jsx';
 import { s } from '../styles.js';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const agora = () => new Date().toTimeString().slice(0, 5);
-const OFFLINE_KEY = 'medicao_offline_v1';
 
 function VeiculoBusca({ veiculos, value, onChange, excluirId, required }) {
   const lista = excluirId ? veiculos.filter(v => v.id !== Number(excluirId)) : veiculos;
@@ -87,14 +87,6 @@ function VeiculoBusca({ veiculos, value, onChange, excluirId, required }) {
   );
 }
 
-function lerOffline() {
-  try { return JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]'); }
-  catch { return []; }
-}
-function salvarOffline(items) {
-  localStorage.setItem(OFFLINE_KEY, JSON.stringify(items));
-}
-
 const FORM_INICIAR = {
   contrato_id: '', rota_id: '', veiculo_id: '',
   data: hoje(), horario_saida: '', km_inicial: '',
@@ -119,14 +111,32 @@ export default function MotoristaScreen({ usuario }) {
   const [salvando, setSalvando] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
-  const [pendentes, setPendentes] = useState(() => lerOffline());
+  const [pendentes, setPendentes] = useState([]);
   const [erro, setErro] = useState('');
   const [formI, setFormI] = useState(FORM_INICIAR);
   const [formF, setFormF] = useState(FORM_FINALIZAR);
 
   const carregarDados = useCallback(async () => {
     setCarregando(true);
-    const [{ data: cont }, { data: veic }, { data: todasRotas }, { data: regs, error: regsErr }] = await Promise.all([
+    setErro('');
+
+    if (!navigator.onLine) {
+      const [cont, veic, rotas, regs] = await Promise.all([
+        cacheLoad('contratos'),
+        cacheLoad('veiculos'),
+        cacheLoad('rotas'),
+        cacheLoad(`registros-${usuario.id}`),
+      ]);
+      if (cont) setContratos(cont);
+      if (veic) setVeiculos(veic);
+      if (rotas) setTodasRotas(rotas);
+      if (regs) setRegistros(regs);
+      if (!regs) setErro('Sem conexão e sem cache local. Conecte-se ao menos uma vez para habilitar o uso offline.');
+      setCarregando(false);
+      return;
+    }
+
+    const [{ data: cont }, { data: veic }, { data: todasR }, { data: regs, error: regsErr }] = await Promise.all([
       supabase.from('contratos').select('id, nome').order('nome'),
       supabase.from('veiculos').select('id, placa, descricao').order('placa'),
       supabase.from('rotas').select('id, nome, contrato_id').order('nome'),
@@ -137,28 +147,57 @@ export default function MotoristaScreen({ usuario }) {
         .order('data', { ascending: false })
         .order('criado_em', { ascending: false }),
     ]);
-    if (cont) setContratos(cont);
-    if (veic) setVeiculos(veic);
-    if (todasRotas) setTodasRotas(todasRotas);
-    if (regsErr) { console.error('Erro ao carregar registros:', regsErr); setErro('Erro ao carregar registros: ' + regsErr.message); }
-    else if (regs) setRegistros(regs);
+
+    if (cont) { setContratos(cont); cacheSave('contratos', cont); }
+    if (veic) { setVeiculos(veic); cacheSave('veiculos', veic); }
+    if (todasR) { setTodasRotas(todasR); cacheSave('rotas', todasR); }
+    if (regsErr) { console.error(regsErr); setErro('Erro ao carregar registros: ' + regsErr.message); }
+    else if (regs) { setRegistros(regs); cacheSave(`registros-${usuario.id}`, regs); }
+
     setCarregando(false);
   }, [usuario.id]);
 
   const sincronizarPendentes = useCallback(async () => {
-    const itens = lerOffline();
+    const itens = await queueGetAll();
     if (!itens.length) return;
     setSincronizando(true);
-    const restantes = [];
-    for (const { _localId, ...dados } of itens) {
-      const { error } = await supabase.from('registros').insert(dados);
-      if (error) restantes.push({ _localId, ...dados });
+    let algumSucesso = false;
+
+    for (const item of itens) {
+      if (item.type === 'update') {
+        const { error } = await supabase.from('registros').update(item.data).eq('id', item.recordId);
+        if (!error) { await queueRemove(item._localId); algumSucesso = true; }
+      } else {
+        const { _localId, type, ...dados } = item;
+        const { error } = await supabase.from('registros').insert(dados);
+        if (!error) { await queueRemove(item._localId); algumSucesso = true; }
+      }
     }
-    salvarOffline(restantes);
+
+    const restantes = await queueGetAll();
     setPendentes(restantes);
-    if (restantes.length < itens.length) await carregarDados();
+    if (algumSucesso) await carregarDados();
     setSincronizando(false);
   }, [carregarDados]);
+
+  useEffect(() => {
+    // Migra fila antiga do localStorage para IndexedDB (apenas uma vez)
+    const legacyKey = 'medicao_offline_v1';
+    const legacyRaw = localStorage.getItem(legacyKey);
+    if (legacyRaw) {
+      try {
+        const legacyItems = JSON.parse(legacyRaw);
+        Promise.all(legacyItems.map(item => queuePush({ ...item, type: 'insert' })))
+          .then(() => { localStorage.removeItem(legacyKey); return queueGetAll(); })
+          .then(setPendentes);
+      } catch {
+        localStorage.removeItem(legacyKey);
+        queueGetAll().then(setPendentes);
+      }
+    } else {
+      queueGetAll().then(setPendentes);
+    }
+  }, []);
 
   useEffect(() => {
     carregarDados();
@@ -268,9 +307,9 @@ export default function MotoristaScreen({ usuario }) {
 
     setSalvando(true);
     if (!navigator.onLine) {
-      const novo = { ...dados, _localId: `${Date.now()}-${Math.random()}` };
-      const novos = [...lerOffline(), novo];
-      salvarOffline(novos);
+      const item = { ...dados, _localId: `ins-${Date.now()}-${Math.random()}`, type: 'insert' };
+      await queuePush(item);
+      const novos = await queueGetAll();
       setPendentes(novos);
     } else {
       const { error } = await supabase.from('registros').insert(dados);
@@ -311,6 +350,27 @@ export default function MotoristaScreen({ usuario }) {
     };
 
     setSalvando(true);
+
+    if (!navigator.onLine) {
+      await queuePush({
+        _localId: `upd-${Date.now()}-${Math.random()}`,
+        type: 'update',
+        recordId: rascunhoAtivo.id,
+        data: atualizacao,
+      });
+      // Atualiza cache local imediatamente para UI refletir a mudança
+      const cached = await cacheLoad(`registros-${usuario.id}`) || [];
+      const atualizado = cached.map(r => r.id === rascunhoAtivo.id ? { ...r, ...atualizacao } : r);
+      await cacheSave(`registros-${usuario.id}`, atualizado);
+      setRegistros(atualizado);
+      const novos = await queueGetAll();
+      setPendentes(novos);
+      setSalvando(false);
+      setView('lista');
+      setRascunhoAtivo(null);
+      return;
+    }
+
     const { error } = await supabase.from('registros').update(atualizacao).eq('id', rascunhoAtivo.id);
     if (error) { setErro('Erro ao finalizar. Tente novamente.'); console.error(error); }
     else { await carregarDados(); setView('lista'); setRascunhoAtivo(null); }
