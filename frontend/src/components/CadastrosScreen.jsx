@@ -254,6 +254,7 @@ function LoginsSection() {
   const [form, setForm] = useState({ nome: '', email: '', senha: '', perfil: 'motorista' });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [senhaTemp, setSenhaTemp] = useState(null); // { nome, senha }
 
   useEffect(() => { carregar(); }, []);
   async function carregar() {
@@ -280,18 +281,49 @@ function LoginsSection() {
     await supabase.from('usuarios').delete().eq('id', id);
     setLista(l => l.filter(x => x.id !== id));
   }
-  async function redefinirSenha(id) {
-    const nova = prompt('Nova senha:');
-    if (!nova) return;
-    await supabase.rpc('criar_usuario', { p_nome: '', p_email: '', p_senha: nova, p_perfil: '' })
-      .then(() => {}); // fallback
-    // update direto via SQL seria ideal; por ora avisa
-    alert('Para redefinir senha, execute no SQL Editor:\nUPDATE usuarios SET senha = crypt(\'' + nova + '\', gen_salt(\'bf\')) WHERE id = ' + id + ';');
+  async function redefinirSenha(u) {
+    if (!confirm(`Redefinir a senha de ${u.nome}? Uma senha temporária será gerada.`)) return;
+    const { data, error } = await supabase.rpc('redefinir_senha_temporaria', { email_input: u.email });
+    if (error || !data?.temp_senha) {
+      alert('Erro ao redefinir senha: ' + (error?.message || 'Tente novamente.'));
+      return;
+    }
+    setSenhaTemp({ nome: u.nome, email: u.email, senha: data.temp_senha });
   }
 
   return (
     <section style={s.card}>
       <h2 style={s.h2}>Logins</h2>
+
+      {/* Modal senha temporária */}
+      {senhaTemp && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: 28, maxWidth: 360, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 6px', fontSize: '1rem' }}>Senha redefinida</h3>
+            <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: '#6b7280' }}>
+              Passe esta senha para <strong>{senhaTemp.nome}</strong> por WhatsApp ou ligação.
+            </p>
+            <div style={{
+              background: '#f5f3ff', border: '1.5px solid #c4b5fd', borderRadius: 10,
+              padding: '14px 18px', textAlign: 'center',
+              fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.2em', color: '#5b21b6',
+              fontFamily: 'monospace', marginBottom: 18,
+            }}>
+              {senhaTemp.senha}
+            </div>
+            <p style={{ margin: '0 0 16px', fontSize: '0.78rem', color: '#9ca3af' }}>
+              Login: {senhaTemp.email}
+            </p>
+            <button style={{ ...s.btn, width: '100%' }} onClick={() => setSenhaTemp(null)}>
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={adicionar} style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div>
           <label style={s.label}>Nome</label>
@@ -328,8 +360,13 @@ function LoginsSection() {
                     {u.perfil === 'gestor' ? 'Gestor' : 'Motorista'}
                   </span>
                 </td>
-                <td style={{ ...tdS, display: 'flex', gap: 6 }}>
-                  <button style={btnRed} onClick={() => remover(u.id)}>Remover</button>
+                <td style={{ ...tdS, whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button style={{ ...s.btnSecondary, padding: '3px 10px', fontSize: '0.78rem' }} onClick={() => redefinirSenha(u)}>
+                      Redefinir senha
+                    </button>
+                    <button style={btnRed} onClick={() => remover(u.id)}>Remover</button>
+                  </div>
                 </td>
               </tr>
             ))}
