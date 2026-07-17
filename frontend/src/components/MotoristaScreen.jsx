@@ -293,7 +293,8 @@ export default function MotoristaScreen({ usuario }) {
   }, [formF.veiculo_troca_id, usuario.id]);
 
   const rascunhos = registros.filter(r => r.status === 'rascunho');
-  const historico = registros.filter(r => r.status !== 'rascunho');
+  const mesAtual = hoje().slice(0, 7);
+  const historico = registros.filter(r => r.status !== 'rascunho' && r.data?.startsWith(mesAtual));
 
   // Sugestões automáticas baseadas no histórico do motorista
   const sugestoes = useMemo(() => {
@@ -779,7 +780,7 @@ export default function MotoristaScreen({ usuario }) {
         </h2>
         {carregando
           ? <p style={s.subtitle}>Carregando...</p>
-          : <RegistrosTable registros={historico} todasRotas={todasRotas} veiculos={veiculos} />}
+          : <RegistrosTable registros={historico} todasRotas={todasRotas} veiculos={veiculos} semToggleColunas />}
       </section>
     </div>
   );

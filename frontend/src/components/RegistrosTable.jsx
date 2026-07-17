@@ -58,6 +58,7 @@ export default function RegistrosTable({
   onValidar,
   onEditar,
   onDomingoFeriado,
+  semToggleColunas = false,
 }) {
   const modoGestor = Boolean(onValidar);
   const [ordem, setOrdem] = useState(DEFAULT_ORDEM);
@@ -221,7 +222,7 @@ export default function RegistrosTable({
   return (
     <div>
       {/* Barra de controle de colunas */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 8px 2px', position: 'relative' }} ref={painelRef}>
+      {!semToggleColunas && <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 8px 2px', position: 'relative' }} ref={painelRef}>
         <button
           onClick={() => setPainelAberto(p => !p)}
           style={{
@@ -275,7 +276,7 @@ export default function RegistrosTable({
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Tabela */}
       <div style={s.tableWrap}>
