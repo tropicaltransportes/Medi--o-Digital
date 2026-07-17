@@ -119,6 +119,7 @@ export default function MotoristaScreen({ usuario }) {
   const carregarDados = useCallback(async () => {
     setCarregando(true);
     setErro('');
+    try {
 
     if (!navigator.onLine) {
       const [cont, veic, rotas, regs] = await Promise.all([
@@ -154,7 +155,12 @@ export default function MotoristaScreen({ usuario }) {
     if (regsErr) { console.error(regsErr); setErro('Erro ao carregar registros: ' + regsErr.message); }
     else if (regs) { setRegistros(regs); cacheSave(`registros-${usuario.id}`, regs); }
 
-    setCarregando(false);
+    } catch (e) {
+      console.error('[carregarDados] erro inesperado:', e);
+      setErro('Erro ao carregar dados. Verifique a conexão.');
+    } finally {
+      setCarregando(false);
+    }
   }, [usuario.id]);
 
   const sincronizarPendentes = useCallback(async () => {
