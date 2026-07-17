@@ -18,18 +18,21 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon-192.png', 'icon-512.png'],
+      includeAssets: ['icon.svg'],
       manifest: {
         name: 'Medição de Rotas',
         short_name: 'Medição',
-        theme_color: '#1D9E75',
-        background_color: '#ffffff',
+        theme_color: '#5D52D1',
+        background_color: '#14132B',
         display: 'standalone',
         icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }
-        ]
-      }
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+        ],
+      },
+      workbox: {
+        navigateFallback: 'index.html',
+        globPatterns: ['**/*.{js,css,html,svg,ico,woff2}'],
+      },
     })
   ],
   server: {
