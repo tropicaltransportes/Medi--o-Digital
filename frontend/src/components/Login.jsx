@@ -9,10 +9,7 @@ export default function Login({ onLogin }) {
   const [erro, setErro] = useState('');
   const [entrando, setEntrando] = useState(false);
 
-  const [tela, setTela] = useState('login'); // 'login' | 'esqueci' | 'temp'
-  const [emailReset, setEmailReset] = useState('');
-  const [enviando, setEnviando] = useState(false);
-  const [tempSenha, setTempSenha] = useState('');
+  const [tela, setTela] = useState('login'); // 'login' | 'esqueci'
 
   async function entrar(e) {
     e.preventDefault();
@@ -34,99 +31,21 @@ export default function Login({ onLogin }) {
     setEntrando(false);
   }
 
-  async function solicitarReset(e) {
-    e.preventDefault();
-    setErro('');
-    setEnviando(true);
-
-    const { data, error } = await supabase.rpc('redefinir_senha_temporaria', {
-      email_input: emailReset.trim().toLowerCase(),
-    });
-
-    setEnviando(false);
-
-    if (error) {
-      setErro(`Erro: ${error.message || error.code || JSON.stringify(error)}`);
-      return;
-    }
-
-    if (data?.temp_senha) {
-      setTempSenha(data.temp_senha);
-      setTela('temp');
-    } else {
-      setErro('Email não encontrado no sistema.');
-    }
-  }
-
-  // ── TELA SENHA TEMPORÁRIA ────────────────────────────────────────────────────
-  if (tela === 'temp') {
-    return (
-      <div style={s.loginPage}>
-        <div style={s.loginCard}>
-          <h1 style={s.loginTitle}>Medição de Rotas</h1>
-          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '18px 20px', marginBottom: 20 }}>
-            <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: '0.95rem', color: '#166534' }}>Senha temporária gerada</p>
-            <p style={{ margin: '0 0 14px', fontSize: '0.82rem', color: '#166534' }}>
-              Use a senha abaixo para entrar. Recomendamos alterá-la após o login.
-            </p>
-            <div style={{
-              background: '#fff', border: '1.5px solid #86efac', borderRadius: 8,
-              padding: '12px 16px', textAlign: 'center',
-              fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.18em', color: C.accent,
-              fontFamily: 'monospace',
-            }}>
-              {tempSenha}
-            </div>
-          </div>
-          <button
-            style={{ ...s.btn, width: '100%', padding: '12px' }}
-            onClick={() => {
-              setEmail(emailReset);
-              setSenha(tempSenha);
-              setTela('login');
-            }}
-          >
-            Ir para o login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // ── TELA ESQUECI A SENHA ─────────────────────────────────────────────────────
   if (tela === 'esqueci') {
     return (
       <div style={s.loginPage}>
         <div style={s.loginCard}>
           <h1 style={s.loginTitle}>Medição de Rotas</h1>
-          <p style={{ ...s.subtitle, marginBottom: 24 }}>Informe seu email cadastrado para receber uma senha temporária.</p>
-
-          <form onSubmit={solicitarReset}>
-            <label style={s.label}>Email</label>
-            <input
-              required
-              type="email"
-              value={emailReset}
-              onChange={(e) => setEmailReset(e.target.value)}
-              style={{ ...s.input, marginBottom: 20 }}
-              placeholder="seu@email.com"
-              autoComplete="email"
-              autoFocus
-            />
-
-            {erro && <p style={{ ...s.errorText, marginBottom: 12 }}>{erro}</p>}
-
-            <button
-              style={{ ...s.btn, width: '100%', padding: '12px', opacity: enviando ? 0.7 : 1 }}
-              type="submit"
-              disabled={enviando}
-            >
-              {enviando ? 'Processando...' : 'Gerar senha temporária'}
-            </button>
-          </form>
-
+          <div style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: 10, padding: '20px', marginBottom: 20, textAlign: 'center' }}>
+            <p style={{ margin: '0 0 8px', fontSize: '1.5rem' }}>🔑</p>
+            <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: '0.95rem', color: '#5b21b6' }}>Redefinição de senha</p>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.5 }}>
+              Entre em contato com o administrador do sistema para receber uma nova senha temporária.
+            </p>
+          </div>
           <button
-            style={{ width: '100%', marginTop: 12, background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: '0.875rem' }}
+            style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: '0.875rem' }}
             onClick={() => { setTela('login'); setErro(''); }}
           >
             ← Voltar ao login
