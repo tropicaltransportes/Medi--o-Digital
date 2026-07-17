@@ -211,17 +211,32 @@ export default function MotoristaScreen({ usuario }) {
     };
   }, [carregarDados, sincronizarPendentes]);
 
-  // Carrega rotas ao mudar contrato
+  // Carrega rotas ao mudar contrato — usa todasRotas cacheadas quando offline
   useEffect(() => {
     if (!formI.contrato_id) { setRotas([]); return; }
+    setFormI(f => ({ ...f, rota_id: '' }));
+    if (!navigator.onLine) {
+      setRotas(todasRotas.filter(r => String(r.contrato_id) === String(formI.contrato_id)));
+      return;
+    }
     supabase.from('rotas').select('id, nome')
       .eq('contrato_id', formI.contrato_id).order('nome')
       .then(({ data }) => setRotas(data || []));
-    setFormI(f => ({ ...f, rota_id: '' }));
-  }, [formI.contrato_id]);
+  }, [formI.contrato_id, todasRotas]);
 
   const buscarKmInicial = useCallback(async (veiculoId) => {
     if (!veiculoId) return;
+    if (!navigator.onLine) {
+      // Usa registros cacheados localmente
+      const regsCache = await cacheLoad(`registros-${usuario.id}`);
+      if (!regsCache) return;
+      const ultimo = regsCache
+        .filter(r => r.veiculo_id === Number(veiculoId) && r.status === 'completo' && !r.veiculo_troca_id && r.km_final != null)
+        .sort((a, b) => `${b.data}${b.criado_em || ''}`.localeCompare(`${a.data}${a.criado_em || ''}`))
+        [0];
+      if (ultimo?.km_final != null) setFormI(f => ({ ...f, km_inicial: String(ultimo.km_final) }));
+      return;
+    }
     const { data } = await supabase.from('registros').select('km_final')
       .eq('veiculo_id', veiculoId)
       .eq('status', 'completo')
@@ -233,18 +248,30 @@ export default function MotoristaScreen({ usuario }) {
     if (data?.[0]?.km_final != null) {
       setFormI(f => ({ ...f, km_inicial: String(data[0].km_final) }));
     }
-  }, []);
+  }, [usuario.id]);
 
   // Auto-preenche KM inicial quando o veículo muda manualmente
   useEffect(() => {
     buscarKmInicial(formI.veiculo_id);
   }, [formI.veiculo_id, buscarKmInicial]);
 
-  // Auto-preenche KM Final pelo último registro do veículo substituto (sem troca — km_final pertence a ele)
+  // Auto-preenche KM Final pelo último registro do veículo substituto
   useEffect(() => {
     if (!formF.veiculo_troca_id) return;
+    const vid = Number(formF.veiculo_troca_id);
+    if (!navigator.onLine) {
+      cacheLoad(`registros-${usuario.id}`).then(regsCache => {
+        if (!regsCache) return;
+        const ultimo = regsCache
+          .filter(r => r.veiculo_id === vid && r.status === 'completo' && !r.veiculo_troca_id && r.km_final != null)
+          .sort((a, b) => `${b.data}${b.criado_em || ''}`.localeCompare(`${a.data}${a.criado_em || ''}`))
+          [0];
+        if (ultimo?.km_final != null) setFormF(f => ({ ...f, km_final: String(ultimo.km_final) }));
+      });
+      return;
+    }
     supabase.from('registros').select('km_final')
-      .eq('veiculo_id', Number(formF.veiculo_troca_id))
+      .eq('veiculo_id', vid)
       .eq('status', 'completo')
       .is('veiculo_troca_id', null)
       .not('km_final', 'is', null)
@@ -256,7 +283,7 @@ export default function MotoristaScreen({ usuario }) {
           setFormF(f => ({ ...f, km_final: String(data[0].km_final) }));
         }
       });
-  }, [formF.veiculo_troca_id]);
+  }, [formF.veiculo_troca_id, usuario.id]);
 
   const rascunhos = registros.filter(r => r.status === 'rascunho');
   const historico = registros.filter(r => r.status !== 'rascunho');
