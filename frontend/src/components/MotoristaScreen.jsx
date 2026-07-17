@@ -3,10 +3,53 @@ import { supabase } from '../supabase.js';
 import { kmRodados } from '../storage.js';
 import { cacheSave, cacheLoad, queuePush, queueGetAll, queueRemove } from '../db.js';
 import RegistrosTable from './RegistrosTable.jsx';
-import { s } from '../styles.js';
+import { s, C } from '../styles.js';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const agora = () => new Date().toTimeString().slice(0, 5);
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function formatarData(iso) {
+  if (!iso) return '—';
+  const [, m, d] = iso.split('-');
+  return `${parseInt(d)} ${MESES[parseInt(m)-1]}`;
+}
+
+function HistoricoCards({ registros, todasRotas, veiculos }) {
+  if (!registros.length) return <p style={{ color: C.muted, fontSize: '0.875rem', margin: 0 }}>Nenhum registro este mês.</p>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {registros.map(r => {
+        const rota = todasRotas.find(x => x.id === r.rota_id)?.nome || '—';
+        const veiculo = veiculos.find(x => x.id === r.veiculo_id)?.placa || '—';
+        const km = kmRodados(r);
+        return (
+          <div key={r.id} style={{
+            background: r.validado ? '#f0fdf4' : C.surface,
+            border: `1px solid ${r.validado ? '#86efac' : C.border}`,
+            borderRadius: 12, padding: '12px 14px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <span style={{ fontWeight: 700, fontSize: '0.95rem', color: C.text }}>{rota}</span>
+                <span style={{ color: C.muted, fontSize: '0.8rem', marginLeft: 8 }}>{veiculo}</span>
+              </div>
+              <span style={{ fontWeight: 800, fontSize: '1.15rem', color: C.accent, flexShrink: 0 }}>{km} km</span>
+            </div>
+            <div style={{ marginTop: 5, display: 'flex', gap: 10, fontSize: '0.82rem', color: '#374151', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600 }}>{formatarData(r.data)}</span>
+              <span>{r.horario_saida?.slice(0,5)} → {r.horario_chegada?.slice(0,5) || '...'}</span>
+            </div>
+            {(r.finalidade || r.observacao) && (
+              <p style={{ margin: '5px 0 0', fontSize: '0.78rem', color: C.muted }}>
+                {[r.finalidade, r.observacao].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function VeiculoBusca({ veiculos, value, onChange, excluirId, required }) {
   const lista = excluirId ? veiculos.filter(v => v.id !== Number(excluirId)) : veiculos;
@@ -116,6 +159,9 @@ export default function MotoristaScreen({ usuario }) {
   const [erro, setErro] = useState('');
   const [formI, setFormI] = useState(FORM_INICIAR);
   const [formF, setFormF] = useState(FORM_FINALIZAR);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  const [kmAutoPreenchido, setKmAutoPreenchido] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const carregarDados = useCallback(async () => {
     setCarregando(true);
@@ -182,8 +228,14 @@ export default function MotoristaScreen({ usuario }) {
     }
 
     const restantes = await queueGetAll();
+    const sincronizados = itens.length - restantes.length;
     setPendentes(restantes);
-    if (algumSucesso) await carregarDados();
+    if (algumSucesso) {
+      await carregarDados();
+      const n = sincronizados;
+      setToast(`${n} registro${n > 1 ? 's' : ''} sincronizado${n > 1 ? 's' : ''} ✓`);
+      setTimeout(() => setToast(null), 3500);
+    }
     setSincronizando(false);
   }, [carregarDados]);
 
@@ -204,6 +256,12 @@ export default function MotoristaScreen({ usuario }) {
     } else {
       queueGetAll().then(setPendentes);
     }
+  }, []);
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
   }, []);
 
   useEffect(() => {
@@ -241,7 +299,10 @@ export default function MotoristaScreen({ usuario }) {
         .filter(r => r.veiculo_id === Number(veiculoId) && r.status === 'completo' && !r.veiculo_troca_id && r.km_final != null)
         .sort((a, b) => `${b.data}${b.criado_em || ''}`.localeCompare(`${a.data}${a.criado_em || ''}`))
         [0];
-      if (ultimo?.km_final != null) setFormI(f => ({ ...f, km_inicial: String(ultimo.km_final) }));
+      if (ultimo?.km_final != null) {
+        setFormI(f => ({ ...f, km_inicial: String(ultimo.km_final) }));
+        setKmAutoPreenchido(true);
+      }
       return;
     }
     const { data } = await supabase.from('registros').select('km_final')
@@ -254,6 +315,7 @@ export default function MotoristaScreen({ usuario }) {
       .limit(1);
     if (data?.[0]?.km_final != null) {
       setFormI(f => ({ ...f, km_inicial: String(data[0].km_final) }));
+      setKmAutoPreenchido(true);
     }
   }, [usuario.id]);
 
@@ -311,6 +373,21 @@ export default function MotoristaScreen({ usuario }) {
     const contrato_id = rota ? String(rota.contrato_id) : '';
     return { veiculo_id, rota_id, contrato_id };
   }, [registros, todasRotas]);
+
+  const finalidadesFrequentes = useMemo(() => {
+    const counts = {};
+    registros.forEach(r => {
+      const f = r.finalidade?.trim();
+      if (f) counts[f] = (counts[f] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([f]) => f);
+  }, [registros]);
+
+  const resumoMes = useMemo(() => {
+    const totalKm = historico.reduce((acc, r) => acc + kmRodados(r), 0);
+    const dias = new Set(historico.map(r => r.data).filter(Boolean)).size;
+    return { viagens: historico.length, totalKm, dias };
+  }, [historico]);
 
   function rotaNome(rota_id) {
     return todasRotas.find(r => r.id === rota_id)?.nome || '—';
@@ -495,7 +572,14 @@ export default function MotoristaScreen({ usuario }) {
               </div>
               <div>
                 <label style={s.label}>KM Inicial</label>
-                <input required type="number" min="0" value={formI.km_inicial} onChange={ci('km_inicial')} style={s.input} placeholder="Auto-preenchido pelo veículo" />
+                <input required type="number" min="0" value={formI.km_inicial}
+                  onChange={e => { setKmAutoPreenchido(false); ci('km_inicial')(e); }}
+                  style={s.input} placeholder="Auto-preenchido pelo veículo" />
+                {kmAutoPreenchido && formI.km_inicial && (
+                  <span style={{ fontSize: '0.72rem', color: '#16a34a', marginTop: 3, display: 'block', fontWeight: 600 }}>
+                    ↑ do último registro do veículo
+                  </span>
+                )}
               </div>
               <div>
                 <label style={s.label}>Turno</label>
@@ -510,6 +594,23 @@ export default function MotoristaScreen({ usuario }) {
               {formI.tipo_turno !== 'manutencao' && (
                 <div>
                   <label style={s.label}>Finalidade</label>
+                  {finalidadesFrequentes.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                      {finalidadesFrequentes.map(f => (
+                        <button key={f} type="button"
+                          onClick={() => setFormI(fi => ({ ...fi, finalidade: fi.finalidade === f ? '' : f }))}
+                          style={{
+                            padding: '4px 12px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600,
+                            cursor: 'pointer', border: '1.5px solid',
+                            background: formI.finalidade === f ? C.accent : C.accentSoft,
+                            color: formI.finalidade === f ? '#fff' : C.accentDark,
+                            borderColor: formI.finalidade === f ? C.accent : C.border,
+                          }}>
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <input value={formI.finalidade} onChange={ci('finalidade')} style={s.input} placeholder="Ex: entrega de materiais" />
                 </div>
               )}
@@ -772,16 +873,48 @@ export default function MotoristaScreen({ usuario }) {
         </section>
       )}
 
+      {/* Resumo do mês */}
+      {!carregando && historico.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          {[
+            { label: 'Viagens', val: resumoMes.viagens, icon: '🚍' },
+            { label: 'KM rodados', val: `${resumoMes.totalKm} km`, icon: '📍' },
+            { label: 'Dias', val: resumoMes.dias, icon: '📅' },
+          ].map(({ label, val, icon }) => (
+            <div key={label} style={{ ...s.card, margin: 0, textAlign: 'center', padding: '12px 8px' }}>
+              <div style={{ fontSize: '1.3rem', marginBottom: 2 }}>{icon}</div>
+              <div style={{ fontWeight: 800, fontSize: '1.15rem', color: C.accent }}>{val}</div>
+              <div style={{ fontSize: '0.72rem', color: C.muted, fontWeight: 600, marginTop: 2 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Histórico */}
       <section style={s.card}>
         <h2 style={s.h2}>
-          Histórico
+          Histórico — {MESES[new Date().getMonth()]}
           {historico.length > 0 && <span style={{ ...s.badge, marginLeft: 8, verticalAlign: 'middle' }}>{historico.length}</span>}
         </h2>
         {carregando
           ? <p style={s.subtitle}>Carregando...</p>
-          : <RegistrosTable registros={historico} todasRotas={todasRotas} veiculos={veiculos} semToggleColunas />}
+          : isMobile
+            ? <HistoricoCards registros={historico} todasRotas={todasRotas} veiculos={veiculos} />
+            : <RegistrosTable registros={historico} todasRotas={todasRotas} veiculos={veiculos} semToggleColunas />}
       </section>
+
+      {/* Toast de sync */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+          background: '#166534', color: '#fff', padding: '11px 22px', borderRadius: 12,
+          fontSize: '0.875rem', fontWeight: 700, zIndex: 9999,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.25)', pointerEvents: 'none',
+          animation: 'fadeInUp 0.25s ease',
+        }}>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
