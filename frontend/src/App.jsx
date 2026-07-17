@@ -60,14 +60,8 @@ export default function App() {
 
   if (usuario.perfil === 'motorista') {
     return (
-      <div style={{ fontFamily: 'Inter, Segoe UI, Arial, sans-serif', minHeight: '100vh', background: C.bg, color: C.text }}>
-        <header style={{ padding: '14px 28px', background: C.surface, borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: C.text }}>Medição de Rotas</div>
-          <button onClick={sair} style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.muted, cursor: 'pointer', fontSize: '0.8rem' }}>Sair</button>
-        </header>
-        <div style={{ padding: '24px 28px' }}>
-          <MotoristaScreen usuario={usuario} />
-        </div>
+      <div style={{ fontFamily: 'Manrope, Space Grotesk, Inter, sans-serif', minHeight: '100vh', background: 'oklch(0.10 0.01 288)', color: 'oklch(0.97 0.01 288)' }}>
+        <MotoristaScreen usuario={usuario} onSair={sair} />
       </div>
     );
   }
