@@ -63,6 +63,57 @@ const TURNO_BADGE = {
 
 // ── SUB-COMPONENTS ────────────────────────────────────────────────────────────
 
+function GloboSVG() {
+  return (
+    <svg viewBox="0 0 180 180" width="180" height="180"
+      style={{ position: 'absolute', right: -24, bottom: -24, opacity: 0.28, pointerEvents: 'none', zIndex: 0 }}>
+      <defs>
+        <radialGradient id="globeBg" cx="38%" cy="32%" r="68%">
+          <stop offset="0%" stopColor="#b8aff8" stopOpacity="0.55"/>
+          <stop offset="100%" stopColor="#3d2f8c" stopOpacity="0.05"/>
+        </radialGradient>
+        <clipPath id="globeClip">
+          <circle cx="90" cy="90" r="78"/>
+        </clipPath>
+      </defs>
+
+      {/* Sphere base */}
+      <circle cx="90" cy="90" r="78" fill="url(#globeBg)" stroke="#a39aeb" strokeOpacity="0.3" strokeWidth="1"/>
+
+      {/* Latitude lines */}
+      <g clipPath="url(#globeClip)" stroke="#a39aeb" strokeOpacity="0.22" strokeWidth="0.7" fill="none">
+        <ellipse cx="90" cy="90" rx="78" ry="22"/>
+        <ellipse cx="90" cy="66" rx="68" ry="17"/>
+        <ellipse cx="90" cy="114" rx="68" ry="17"/>
+        <ellipse cx="90" cy="44" rx="48" ry="12"/>
+        <ellipse cx="90" cy="136" rx="48" ry="12"/>
+        <ellipse cx="90" cy="25"  rx="24" ry="6"/>
+        <ellipse cx="90" cy="155" rx="24" ry="6"/>
+      </g>
+
+      {/* Longitude lines */}
+      <g clipPath="url(#globeClip)" stroke="#a39aeb" strokeOpacity="0.22" strokeWidth="0.7" fill="none">
+        <line x1="90" y1="12" x2="90" y2="168"/>
+        <ellipse cx="90" cy="90" rx="24" ry="78"/>
+        <ellipse cx="90" cy="90" rx="48" ry="78"/>
+      </g>
+
+      {/* Route arcs + dots */}
+      <g clipPath="url(#globeClip)">
+        <circle cx="112" cy="68" r="3" fill="#86efac" opacity="0.9"/>
+        <circle cx="62"  cy="98" r="2.5" fill="#86efac" opacity="0.7"/>
+        <circle cx="118" cy="108" r="2" fill="#a39aeb" opacity="0.8"/>
+        <path d="M62,98 Q88,72 112,68" stroke="#86efac" strokeWidth="1.2" fill="none" strokeOpacity="0.65" strokeDasharray="4 3">
+          <animate attributeName="stroke-dashoffset" values="0;-28" dur="3s" repeatCount="indefinite"/>
+        </path>
+        <path d="M112,68 Q120,90 118,108" stroke="#a39aeb" strokeWidth="1" fill="none" strokeOpacity="0.55" strokeDasharray="3 3">
+          <animate attributeName="stroke-dashoffset" values="0;-24" dur="2.5s" repeatCount="indefinite"/>
+        </path>
+      </g>
+    </svg>
+  );
+}
+
 function HistoricoCards({ registros, todasRotas, veiculos }) {
   if (!registros.length) {
     return <p style={{ color: D.textSec, fontSize: '0.875rem', margin: 0 }}>Nenhum registro este mês.</p>;
@@ -891,6 +942,8 @@ export default function MotoristaScreen({ usuario, onSair }) {
           <div style={{ borderRadius: 22, padding: 20, background: 'linear-gradient(160deg, oklch(0.30 0.08 292) 0%, oklch(0.19 0.03 288) 65%)', border: '1px solid oklch(0.55 0.14 292 / 0.4)', boxShadow: '0 12px 32px oklch(0.15 0.02 288 / 0.5)', position: 'relative', overflow: 'hidden', marginBottom: 20 }}>
             {/* Glow */}
             <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'oklch(0.72 0.16 292 / 0.10)', filter: 'blur(32px)', pointerEvents: 'none' }} />
+            {/* Globo decorativo */}
+            <GloboSVG />
 
             {/* Badge */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
