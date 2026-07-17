@@ -46,7 +46,7 @@ export default function Login({ onLogin }) {
     setEnviando(false);
 
     if (error) {
-      setErro('Erro ao processar. Tente novamente.');
+      setErro(`Erro: ${error.message || error.code || JSON.stringify(error)}`);
       return;
     }
 
