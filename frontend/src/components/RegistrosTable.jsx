@@ -2,6 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { kmRodados } from '../storage.js';
 import { s, C } from '../styles.js';
 
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function formatarData(iso) {
+  if (!iso) return '—';
+  const [, m, d] = iso.split('-');
+  return `${parseInt(d)} ${MESES[parseInt(m)-1]}`;
+}
+
 const pill = {
   display: 'inline-flex', alignItems: 'center', gap: 4,
   borderRadius: 20, padding: '2px 9px', fontSize: '0.72rem', fontWeight: 600,
@@ -160,7 +167,7 @@ export default function RegistrosTable({
         );
       case 'rota':    return <td key={col.id} style={s.td}>{rotaNome(r)}</td>;
       case 'veiculo': return <td key={col.id} style={s.td}>{veiculoPlaca(r)}</td>;
-      case 'data':    return <td key={col.id} style={s.td}>{r.data}</td>;
+      case 'data':    return <td key={col.id} style={s.td}>{formatarData(r.data)}</td>;
       case 'saida':   return <td key={col.id} style={s.td}>{r.horario_saida?.slice(0, 5) || '—'}</td>;
       case 'chegada': return <td key={col.id} style={s.td}>{r.horario_chegada?.slice(0, 5) || '—'}</td>;
       case 'km_ini':  return <td key={col.id} style={s.td}>{r.km_inicial}</td>;

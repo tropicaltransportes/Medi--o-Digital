@@ -374,15 +374,6 @@ export default function MotoristaScreen({ usuario }) {
     return { veiculo_id, rota_id, contrato_id };
   }, [registros, todasRotas]);
 
-  const finalidadesFrequentes = useMemo(() => {
-    const counts = {};
-    registros.forEach(r => {
-      const f = r.finalidade?.trim();
-      if (f) counts[f] = (counts[f] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([f]) => f);
-  }, [registros]);
-
   const resumoMes = useMemo(() => {
     const totalKm = historico.reduce((acc, r) => acc + kmRodados(r), 0);
     const dias = new Set(historico.map(r => r.data).filter(Boolean)).size;
@@ -594,23 +585,6 @@ export default function MotoristaScreen({ usuario }) {
               {formI.tipo_turno !== 'manutencao' && (
                 <div>
                   <label style={s.label}>Finalidade</label>
-                  {finalidadesFrequentes.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                      {finalidadesFrequentes.map(f => (
-                        <button key={f} type="button"
-                          onClick={() => setFormI(fi => ({ ...fi, finalidade: fi.finalidade === f ? '' : f }))}
-                          style={{
-                            padding: '4px 12px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600,
-                            cursor: 'pointer', border: '1.5px solid',
-                            background: formI.finalidade === f ? C.accent : C.accentSoft,
-                            color: formI.finalidade === f ? '#fff' : C.accentDark,
-                            borderColor: formI.finalidade === f ? C.accent : C.border,
-                          }}>
-                          {f}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                   <input value={formI.finalidade} onChange={ci('finalidade')} style={s.input} placeholder="Ex: entrega de materiais" />
                 </div>
               )}
