@@ -112,6 +112,7 @@ export default function MotoristaScreen({ usuario }) {
   const [sincronizando, setSincronizando] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [pendentes, setPendentes] = useState([]);
+  const [pendenteFinalizar, setPendenteFinalizar] = useState(null);
   const [erro, setErro] = useState('');
   const [formI, setFormI] = useState(FORM_INICIAR);
   const [formF, setFormF] = useState(FORM_FINALIZAR);
@@ -119,6 +120,7 @@ export default function MotoristaScreen({ usuario }) {
   const carregarDados = useCallback(async () => {
     setCarregando(true);
     setErro('');
+    try {
 
     if (!navigator.onLine) {
       const [cont, veic, rotas, regs] = await Promise.all([
@@ -154,7 +156,12 @@ export default function MotoristaScreen({ usuario }) {
     if (regsErr) { console.error(regsErr); setErro('Erro ao carregar registros: ' + regsErr.message); }
     else if (regs) { setRegistros(regs); cacheSave(`registros-${usuario.id}`, regs); }
 
-    setCarregando(false);
+    } catch (e) {
+      console.error('[carregarDados] erro inesperado:', e);
+      setErro('Erro ao carregar dados. Verifique a conexão.');
+    } finally {
+      setCarregando(false);
+    }
   }, [usuario.id]);
 
   const sincronizarPendentes = useCallback(async () => {
@@ -404,6 +411,43 @@ export default function MotoristaScreen({ usuario }) {
     setSalvando(false);
   }
 
+  // ── FINALIZAR PENDENTE OFFLINE ───────────────────────────────────────────────
+
+  function abrirFinalizarPendente(p) {
+    setPendenteFinalizar(p);
+    setFormF({ ...FORM_FINALIZAR, horario_chegada: agora() });
+    setErro('');
+    setView('finalizar-pendente');
+  }
+
+  async function finalizarPendente(e) {
+    e.preventDefault();
+    setErro('');
+    const kmi = Number(pendenteFinalizar.km_inicial);
+    const kmf = Number(formF.km_final);
+    if (!formF.trocarVeiculo && kmf < kmi) { setErro('KM Final deve ser maior ou igual ao KM Inicial.'); return; }
+
+    setSalvando(true);
+    const itemFinalizado = {
+      ...pendenteFinalizar,
+      horario_chegada: formF.horario_chegada,
+      km_final: kmf,
+      observacao: formF.observacao,
+      status: 'completo',
+      ...(formF.trocarVeiculo && {
+        veiculo_troca_id: Number(formF.veiculo_troca_id) || null,
+        troca_veiculo: formF.troca_veiculo,
+        motivo_troca: formF.motivo_troca,
+      }),
+    };
+    await queuePush(itemFinalizado); // put substitui o item com mesmo _localId
+    const novos = await queueGetAll();
+    setPendentes(novos);
+    setSalvando(false);
+    setView('lista');
+    setPendenteFinalizar(null);
+  }
+
   // ── VIEWS ────────────────────────────────────────────────────────────────────
 
   if (view === 'iniciar') {
@@ -577,16 +621,74 @@ export default function MotoristaScreen({ usuario }) {
     );
   }
 
+  if (view === 'finalizar-pendente' && pendenteFinalizar) {
+    return (
+      <div style={s.layout}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+          <button style={s.btnSecondary} onClick={() => setView('lista')}>← Voltar</button>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>Finalizar trajeto offline</h2>
+        </div>
+
+        <section style={{ ...s.card, background: '#fffbeb', border: '1px dashed #d97706' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+            {[
+              ['Rota', rotaNome(pendenteFinalizar.rota_id)],
+              ['Veículo', veiculoPlaca(pendenteFinalizar.veiculo_id)],
+              ['Data', pendenteFinalizar.data],
+              ['Saída', pendenteFinalizar.horario_saida?.slice(0, 5)],
+              ['KM Inicial', pendenteFinalizar.km_inicial],
+            ].map(([label, val]) => (
+              <div key={label}>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', fontWeight: 600 }}>{label}</p>
+                <p style={{ margin: '2px 0 0', fontWeight: 600 }}>{val}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section style={s.card}>
+          <form onSubmit={finalizarPendente}>
+            <div style={s.formGrid}>
+              <div>
+                <label style={s.label}>Horário de chegada</label>
+                <input required type="time" value={formF.horario_chegada} onChange={cf('horario_chegada')} style={s.input} />
+              </div>
+              <div>
+                <label style={s.label}>KM Final</label>
+                <input required type="number" min={formF.trocarVeiculo ? 0 : pendenteFinalizar.km_inicial} value={formF.km_final} onChange={cf('km_final')} style={s.input} placeholder={`Mín: ${pendenteFinalizar.km_inicial}`} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={s.label}>Observações</label>
+                <textarea value={formF.observacao} onChange={cf('observacao')} style={{ ...s.input, resize: 'vertical' }} rows={2} placeholder="Opcional" />
+              </div>
+            </div>
+            {erro && <p style={s.errorText}>{erro}</p>}
+            <p style={{ margin: '12px 0 0', fontSize: '0.8rem', color: '#b45309' }}>
+              Offline — será sincronizado ao reconectar.
+            </p>
+            <button style={{ ...s.btn, marginTop: 12, opacity: salvando ? 0.7 : 1 }} type="submit" disabled={salvando}>
+              {salvando ? 'Salvando...' : 'Finalizar trajeto'}
+            </button>
+          </form>
+        </section>
+      </div>
+    );
+  }
+
   // ── LISTA ────────────────────────────────────────────────────────────────────
 
   return (
     <div style={s.layout}>
       {/* Barra de status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {(() => {
+          const pendentesRascunho = pendentes.filter(p => p.status === 'rascunho');
+          const bloqueado = rascunhos.length > 0 || pendentesRascunho.length > 0;
+          return (
         <button
-          style={{ ...s.btn, fontSize: '0.9rem', opacity: rascunhos.length > 0 ? 0.45 : 1, cursor: rascunhos.length > 0 ? 'not-allowed' : 'pointer' }}
-          disabled={rascunhos.length > 0}
-          title={rascunhos.length > 0 ? 'Finalize o trajeto em andamento antes de iniciar um novo' : ''}
+          style={{ ...s.btn, fontSize: '0.9rem', opacity: bloqueado ? 0.45 : 1, cursor: bloqueado ? 'not-allowed' : 'pointer' }}
+          disabled={bloqueado}
+          title={bloqueado ? 'Finalize o trajeto em andamento antes de iniciar um novo' : ''}
           onClick={() => {
             const novoForm = { ...FORM_INICIAR, ...sugestoes, data: hoje(), horario_saida: agora() };
             setFormI(novoForm);
@@ -597,7 +699,9 @@ export default function MotoristaScreen({ usuario }) {
         >
           + Iniciar novo trajeto
         </button>
-        {rascunhos.length > 0 && (
+          );
+        })()}
+        {(rascunhos.length > 0 || pendentes.filter(p => p.status === 'rascunho').length > 0) && (
           <span style={{ fontSize: '0.8rem', color: '#b45309', fontWeight: 600 }}>
             ⚠ Finalize o trajeto em andamento antes de iniciar um novo
           </span>
@@ -623,14 +727,26 @@ export default function MotoristaScreen({ usuario }) {
           <h2 style={s.h2}>Trajetos em andamento</h2>
 
           {/* Rascunhos offline (pendentes de sync) */}
-          {pendentes.map((p) => (
-            <div key={p._localId} style={{ border: '1px dashed #d97706', borderRadius: 8, padding: 12, marginBottom: 10, background: '#fffbeb' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {pendentes.filter(p => p.type === 'insert').map((p) => (
+            <div key={p._localId} style={{ border: `1px dashed ${p.status === 'completo' ? '#16a34a' : '#d97706'}`, borderRadius: 8, padding: 12, marginBottom: 10, background: p.status === 'completo' ? '#f0fdf4' : '#fffbeb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 600 }}>Rascunho offline</p>
-                  <p style={{ ...s.subtitle, margin: '2px 0 0' }}>Data: {p.data} · Saída: {p.horario_saida} · KM ini: {p.km_inicial}</p>
+                  <p style={{ margin: 0, fontWeight: 600 }}>{p.status === 'completo' ? 'Trajeto offline completo' : 'Rascunho offline'}</p>
+                  <p style={{ ...s.subtitle, margin: '2px 0 0' }}>
+                    {rotaNome(p.rota_id)} · {veiculoPlaca(p.veiculo_id)} · {p.data} · Saída: {p.horario_saida?.slice(0,5)} · KM ini: {p.km_inicial}
+                    {p.status === 'completo' && p.km_final ? ` · KM fin: ${p.km_final}` : ''}
+                  </p>
                 </div>
-                <span style={{ ...s.badge, background: '#fef3c7', color: '#92400e' }}>Aguardando sync</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                  {p.status === 'rascunho' && (
+                    <button style={{ ...s.btnGreen, whiteSpace: 'nowrap' }} onClick={() => abrirFinalizarPendente(p)}>
+                      Finalizar
+                    </button>
+                  )}
+                  <span style={{ ...s.badge, background: p.status === 'completo' ? '#dcfce7' : '#fef3c7', color: p.status === 'completo' ? '#166534' : '#92400e', whiteSpace: 'nowrap' }}>
+                    {p.status === 'completo' ? 'Sync pendente' : 'Aguardando sync'}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
