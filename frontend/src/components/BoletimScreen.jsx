@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { kmRodados, formatarMes } from '../storage.js';
-import { s } from '../styles.js';
 import { exportPDF, btnPDF } from '../utils/pdf.js';
+import { G, gCard, gLabel, gInput, gBtnSec, Selo, RotaMotif, PillDD } from '../gestorUI.jsx';
 
 const fmt = (n) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -54,6 +54,7 @@ export default function BoletimScreen() {
   const [contratos, setContratos] = useState([]);
   const [contratoId, setContratoId] = useState('');
   const [mes, setMes] = useState('');
+  const [ddAberto, setDdAberto] = useState('');
   const [rotas, setRotas] = useState([]);
   const [registros, setRegistros] = useState([]);
   const [regra, setRegra] = useState(null);
@@ -219,47 +220,84 @@ export default function BoletimScreen() {
   const contratoNome = contratos.find(c => c.id === Number(contratoId))?.nome || '';
   const temAjustes   = Object.keys(ajustes).some(k => Object.keys(ajustes[k]).length > 0);
 
-  return (
-    <div>
-      {/* Filtros */}
-      <section style={s.card}>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <label style={s.label}>Contrato</label>
-            <select value={contratoId} onChange={e => setContratoId(e.target.value)} style={{ ...s.input, minWidth: 220 }}>
-              <option value="">Selecione...</option>
-              {contratos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={s.label}>Mês</label>
-            <select value={mes} onChange={e => setMes(e.target.value)} style={{ ...s.input, minWidth: 160 }}>
-              <option value="">Selecione...</option>
-              {mesesDisponiveis.map(m => <option key={m} value={m}>{formatarMes(m)}</option>)}
-            </select>
-          </div>
-          {contratoId && mes && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button style={s.btnSecondary} onClick={carregar}>↻ Atualizar</button>
-              {temAjustes && (
-                <button
-                  style={{ ...s.btnSecondary, color: '#b45309', borderColor: '#fcd34d', background: '#fffbeb', fontSize: '0.78rem' }}
-                  onClick={() => setAjustes({})}
-                  title="Restaurar todas as quantidades para os valores automáticos"
-                >
-                  ↺ Restaurar automático
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
+  function fecharDD() { setTimeout(() => setDdAberto(''), 150); }
 
-      {carregando && <p style={{ ...s.subtitle, padding: 24 }}>Carregando...</p>}
+  return (
+    <div style={{ maxWidth: 1220 }}>
+      {/* Header + Selo */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, marginBottom: 22 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 22, fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.01em', color: G.text }}>
+            Boletim de Medição
+          </h1>
+          <p style={{ margin: 0, fontSize: 13.5, color: G.muted }}>
+            Cálculo do valor de faturamento por rota, a partir dos registros validados do mês.
+          </p>
+        </div>
+        <Selo num={linhas.length || '—'} label="Rotas" />
+      </div>
+
+      {/* Filtros */}
+      <div style={{ ...gCard, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div>
+          <label style={gLabel}>Contrato</label>
+          <PillDD
+            label={contratos.find(c => String(c.id) === contratoId)?.nome || 'Selecione...'}
+            open={ddAberto === 'contrato'}
+            onToggle={() => setDdAberto(ddAberto === 'contrato' ? '' : 'contrato')}
+            onBlur={fecharDD}
+            options={contratos.map(c => ({ value: String(c.id), label: c.nome, active: String(c.id) === contratoId }))}
+            onSelect={v => { setContratoId(v); setDdAberto(''); }}
+            minWidth={220}
+          />
+        </div>
+        <div>
+          <label style={gLabel}>Mês</label>
+          <PillDD
+            label={mes ? formatarMes(mes) : 'Selecione...'}
+            open={ddAberto === 'mes'}
+            onToggle={() => setDdAberto(ddAberto === 'mes' ? '' : 'mes')}
+            onBlur={fecharDD}
+            options={mesesDisponiveis.map(m => ({ value: m, label: formatarMes(m), active: m === mes }))}
+            onSelect={v => { setMes(v); setDdAberto(''); }}
+            minWidth={160}
+          />
+        </div>
+        {contratoId && mes && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <label style={gLabel}>ISS %</label>
+            <input type="number" min="0" max="100" step="0.5" value={issPercent}
+              onChange={e => setIssPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+              style={{ ...gInput, width: 70 }} />
+          </div>
+        )}
+        {contratoId && mes && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button style={gBtnSec} onClick={carregar}>↻ Atualizar</button>
+            {temAjustes && (
+              <button
+                style={{ ...gBtnSec, color: 'oklch(0.55 0.12 80)', borderColor: 'oklch(0.82 0.12 80)', fontSize: '0.78rem' }}
+                onClick={() => setAjustes({})}
+                title="Restaurar todas as quantidades para os valores automáticos"
+              >
+                ↺ Restaurar automático
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {carregando && <p style={{ color: G.muted, fontSize: '0.875rem', padding: 24 }}>Carregando...</p>}
 
       {!carregando && contratoId && mes && linhas.length === 0 && (
-        <div style={{ ...s.card, textAlign: 'center', color: '#6b7280', padding: '48px 24px' }}>
+        <div style={{ ...gCard, textAlign: 'center', color: G.muted, padding: '48px 24px', marginTop: 16 }}>
           Nenhum registro validado encontrado para este contrato e mês.
+        </div>
+      )}
+
+      {!carregando && (!contratoId || !mes) && (
+        <div style={{ ...gCard, textAlign: 'center', color: G.muted, padding: '48px 24px', marginTop: 16 }}>
+          Selecione o contrato e o mês para exibir o boletim.
         </div>
       )}
 
@@ -267,7 +305,7 @@ export default function BoletimScreen() {
         <div ref={boletimRef}>
         <>
           {/* Cabeçalho */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#166534', color: '#fff', borderRadius: '8px 8px 0 0', padding: '10px 16px', fontWeight: 700, fontSize: '1rem', marginTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: G.green, color: '#fff', borderRadius: '12px 12px 0 0', padding: '11px 16px', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.02em', marginTop: 18 }}>
             <span>BOLETIM DE MEDIÇÃO — CONTRATO {contratoNome.toUpperCase()}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontWeight: 400, opacity: 0.85 }}>{formatarMes(mes).toUpperCase()}</span>
@@ -276,7 +314,7 @@ export default function BoletimScreen() {
           </div>
 
           {/* Tabela principal */}
-          <div style={{ overflowX: 'auto', border: '1px solid #14532d', borderTop: 0, borderRadius: '0 0 8px 8px', marginBottom: 24 }}>
+          <div style={{ overflowX: 'auto', border: `1px solid ${G.greenBorder}`, borderTop: 0, borderRadius: '0 0 12px 12px', marginBottom: 18 }}>
             <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 900 }}>
               <thead>
                 <tr>
@@ -402,8 +440,18 @@ export default function BoletimScreen() {
             </table>
           </div>
 
+          {/* Barra bruto → líquido */}
+          <div style={{ ...gCard, marginTop: 0 }}>
+            <RotaMotif
+              pct={tot.valorBruto > 0 ? (tot.valorLiquido / tot.valorBruto) * 100 : 0}
+              color={G.green}
+              labelLeft={`Bruto → Líquido (ISS ${issPercent}%)`}
+              labelRight={`${Number(tot.valorLiquido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de ${Number(tot.valorBruto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            />
+          </div>
+
           {linhas.some(l => l.semConfig) && (
-            <p style={{ color: '#dc2626', marginTop: 12, fontSize: '0.85rem', fontWeight: 600 }}>
+            <p style={{ color: G.red, marginTop: 12, fontSize: '0.85rem', fontWeight: 600 }}>
               ⚠ Algumas rotas não têm tipo de veículo definido. Selecione o tipo na coluna TIPO acima.
             </p>
           )}

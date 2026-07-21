@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase.js';
-import { s } from '../styles.js';
-
-const inputNum = { ...s.input, width: '100%' };
+import { G, gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen, gBtnDanger, gTh, gTd, PillDD, Selo } from '../gestorUI.jsx';
 
 const TIPOS_VEICULO = ['RODOVIÁRIO', 'SEMI RODOVIÁRIO', 'URBANO', 'MICRO', 'VAN', 'PEQUENO PORTE'];
 
@@ -15,6 +13,7 @@ export default function RegrasScreen() {
   const [novaConfig, setNovaConfig] = useState({ configuracao: '', valor_mensal: '', valor_turno_normal: '', valor_turno_extra: '', valor_km_extra_normal: '', valor_km_extra_turno_extra: '' });
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState('');
+  const [ddAberto, setDdAberto] = useState(false);
 
   useEffect(() => {
     supabase.from('contratos').select('id, nome').order('nome')
@@ -45,12 +44,10 @@ export default function RegrasScreen() {
     setSalvando(true);
     setMsg('');
     const payload = { contrato_id: Number(contratoId), dias_mes: Number(form.dias_mes), km_franquia_mensal: Number(form.km_franquia_mensal) };
-    let regraId = regra?.id;
     if (regra) {
       await supabase.from('regras_contrato').update(payload).eq('id', regra.id);
     } else {
-      const { data } = await supabase.from('regras_contrato').insert(payload).select().single();
-      regraId = data?.id;
+      await supabase.from('regras_contrato').insert(payload).select().single();
     }
     await carregarRegra(Number(contratoId));
     setMsg('Regra salva!');
@@ -94,82 +91,106 @@ export default function RegrasScreen() {
   const contratoNome = contratos.find(c => c.id === Number(contratoId))?.nome || '';
 
   return (
-    <div>
+    <div style={{ maxWidth: 980 }}>
+
+      {/* Header + Selo */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, marginBottom: 22 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 22, fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.01em', color: G.text }}>
+            Regras de Faturamento
+          </h1>
+          <p style={{ margin: 0, fontSize: 13.5, color: G.muted }}>
+            Franquia mensal e valores por configuração de veículo, por contrato.
+          </p>
+        </div>
+        <Selo num={contratos.length} label="Contratos" />
+      </div>
+
       {/* Seleção de contrato */}
-      <section style={s.card}>
-        <label style={s.label}>Contrato</label>
-        <select value={contratoId} onChange={e => setContratoId(e.target.value)} style={{ ...s.input, maxWidth: 320 }}>
-          <option value="">Selecione um contrato...</option>
-          {contratos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-      </section>
+      <div style={gCard}>
+        <label style={gLabel}>Contrato</label>
+        <PillDD
+          label={contratoNome || 'Selecione um contrato...'}
+          open={ddAberto}
+          onToggle={() => setDdAberto(o => !o)}
+          onBlur={() => setTimeout(() => setDdAberto(false), 150)}
+          options={contratos.map(c => ({ value: String(c.id), label: c.nome, active: String(c.id) === contratoId }))}
+          onSelect={v => { setContratoId(v); setDdAberto(false); }}
+          minWidth={320}
+        />
+      </div>
 
       {contratoId && (
         <>
-          {/* Regras gerais */}
-          <section style={s.card}>
-            <h2 style={s.h2}>Franquia mensal — {contratoNome}</h2>
+          {/* Franquia mensal */}
+          <div style={{ ...gCard, marginTop: 16 }}>
+            <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700, color: G.text, fontFamily: 'Space Grotesk, sans-serif' }}>
+              Franquia mensal — {contratoNome}
+            </h2>
             <form onSubmit={salvarRegra}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, alignItems: 'end' }}>
                 <div>
-                  <label style={s.label}>Dias no mês</label>
+                  <label style={gLabel}>Dias no mês</label>
                   <input required type="number" min="1" max="31" value={form.dias_mes}
-                    onChange={e => setForm(f => ({ ...f, dias_mes: e.target.value }))} style={inputNum} placeholder="Ex: 26" />
+                    onChange={e => setForm(f => ({ ...f, dias_mes: e.target.value }))}
+                    style={{ ...gInput, width: '100%' }} placeholder="Ex: 26" />
                 </div>
                 <div>
-                  <label style={s.label}>KM franquia mensal</label>
+                  <label style={gLabel}>KM franquia mensal</label>
                   <input required type="number" min="0" value={form.km_franquia_mensal}
-                    onChange={e => setForm(f => ({ ...f, km_franquia_mensal: e.target.value }))} style={inputNum} placeholder="Ex: 5000" />
+                    onChange={e => setForm(f => ({ ...f, km_franquia_mensal: e.target.value }))}
+                    style={{ ...gInput, width: '100%' }} placeholder="Ex: 5000" />
                 </div>
                 <div>
-                  <label style={s.label}>KM / dia (calculado)</label>
-                  <div style={{ ...inputNum, background: '#f3f4f6', color: '#374151', fontWeight: 600, display: 'flex', alignItems: 'center', height: 38, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 12px' }}>
+                  <label style={gLabel}>KM / dia (calculado)</label>
+                  <div style={{ ...gInput, background: G.surfaceAlt, fontWeight: 700, display: 'flex', alignItems: 'center', color: G.text }}>
                     {kmDia}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button style={{ ...s.btn, opacity: salvando ? 0.7 : 1 }} type="submit" disabled={salvando}>
-                    {salvando ? 'Salvando...' : regra ? 'Atualizar' : 'Salvar'}
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+                  <button style={{ ...gBtn, opacity: salvando ? 0.7 : 1 }} type="submit" disabled={salvando}>
+                    {salvando ? 'Salvando...' : regra ? 'Atualizar' : 'Salvar franquia'}
                   </button>
-                  {msg && <span style={{ marginLeft: 12, color: '#16a34a', fontWeight: 600, fontSize: '0.875rem' }}>{msg}</span>}
+                  {msg && <span style={{ color: G.green, fontWeight: 600, fontSize: '0.875rem' }}>{msg}</span>}
                 </div>
               </div>
             </form>
-          </section>
+          </div>
 
           {/* Valores por configuração de veículo */}
           {regra && (
-            <section style={s.card}>
-              <h2 style={s.h2}>Valor mensal por configuração de veículo</h2>
+            <div style={{ ...gCard, marginTop: 16 }}>
+              <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700, color: G.text, fontFamily: 'Space Grotesk, sans-serif' }}>
+                Valor mensal por configuração de veículo
+              </h2>
 
               {valores.length > 0 && (
-                <div style={s.tableWrap}>
-                  <table style={s.table}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead>
                       <tr>
-                        <th style={s.th}>Configuração</th>
-                        <th style={s.th}>Valor mensal</th>
-                        <th style={s.th}>Turno Normal</th>
-                        <th style={s.th}>Turno Extra</th>
-                        <th style={s.th}>KM Extra Normal</th>
-                        <th style={s.th}>KM Extra T. Extra</th>
-                        <th style={s.th}></th>
+                        <th style={gTh}>Configuração</th>
+                        <th style={gTh}>Valor mensal</th>
+                        <th style={gTh}>Turno Normal</th>
+                        <th style={gTh}>Turno Extra</th>
+                        <th style={gTh}>KM Extra Normal</th>
+                        <th style={gTh}>KM Extra T. Extra</th>
+                        <th style={gTh}></th>
                       </tr>
                     </thead>
                     <tbody>
                       {valores.map(v => (
                         <tr key={v.id}>
-                          <td style={{ ...s.td, fontWeight: 600 }}>{v.configuracao}</td>
+                          <td style={{ ...gTd, fontWeight: 700 }}>{v.configuracao}</td>
                           {['valor_mensal', 'valor_turno_normal', 'valor_turno_extra', 'valor_km_extra_normal', 'valor_km_extra_turno_extra'].map(campo => (
-                            <td key={campo} style={s.td}>
+                            <td key={campo} style={gTd}>
                               <input type="number" min="0" step="0.01" defaultValue={v[campo] ?? 0}
                                 onBlur={e => editarCampo(v.id, campo, e.target.value)}
-                                style={{ ...s.input, width: 120, padding: '4px 8px' }} />
+                                style={{ ...gInput, width: 110, padding: '4px 8px', fontSize: '0.82rem' }} />
                             </td>
                           ))}
-                          <td style={s.td}>
-                            <button style={{ ...s.btnSecondary, color: '#dc2626', borderColor: '#fca5a5', padding: '4px 10px', fontSize: '0.8rem' }}
-                              onClick={() => removerConfig(v.id)}>
+                          <td style={gTd}>
+                            <button style={gBtnDanger} onClick={() => removerConfig(v.id)}>
                               Remover
                             </button>
                           </td>
@@ -183,38 +204,40 @@ export default function RegrasScreen() {
               <form onSubmit={adicionarConfig}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginTop: 16, alignItems: 'flex-end' }}>
                   <div>
-                    <label style={s.label}>Configuração</label>
+                    <label style={gLabel}>Configuração</label>
                     <select required value={novaConfig.configuracao}
                       onChange={e => setNovaConfig(n => ({ ...n, configuracao: e.target.value }))}
-                      style={s.input}>
+                      style={{ ...gInput, width: '100%' }}>
                       <option value="">Selecione...</option>
                       {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   {[
-                    ['valor_mensal', 'Valor mensal (R$)'],
-                    ['valor_turno_normal', 'Turno Normal (R$)'],
-                    ['valor_turno_extra', 'Turno Extra (R$)'],
-                    ['valor_km_extra_normal', 'KM Extra Normal (R$)'],
-                    ['valor_km_extra_turno_extra', 'KM Extra T. Extra (R$)'],
+                    ['valor_mensal', 'Mensal (R$)'],
+                    ['valor_turno_normal', 'Turno Normal'],
+                    ['valor_turno_extra', 'Turno Extra'],
+                    ['valor_km_extra_normal', 'KM Extra Normal'],
+                    ['valor_km_extra_turno_extra', 'KM Extra T.Extra'],
                   ].map(([campo, label]) => (
                     <div key={campo}>
-                      <label style={s.label}>{label}</label>
+                      <label style={gLabel}>{label}</label>
                       <input required type="number" min="0" step="0.01" value={novaConfig[campo]}
                         onChange={e => setNovaConfig(n => ({ ...n, [campo]: e.target.value }))}
-                        style={s.input} placeholder="0,00" />
+                        style={{ ...gInput, width: '100%' }} placeholder="0,00" />
                     </div>
                   ))}
                   <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <button style={s.btnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
+                    <button style={gBtnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
                   </div>
                 </div>
               </form>
-            </section>
+            </div>
           )}
 
           {!regra && (
-            <p style={{ ...s.subtitle, marginTop: 8 }}>Salve a franquia mensal primeiro para depois adicionar configurações de veículo.</p>
+            <p style={{ color: G.muted, fontSize: '0.875rem', marginTop: 8 }}>
+              Salve a franquia mensal primeiro para depois adicionar configurações de veículo.
+            </p>
           )}
         </>
       )}

@@ -7,9 +7,7 @@ import RegrasScreen from './RegrasScreen.jsx';
 import BoletimScreen from './BoletimScreen.jsx';
 import CadastrosScreen from './CadastrosScreen.jsx';
 import RelatoriosScreen from './RelatoriosScreen.jsx';
-import { s, C } from '../styles.js';
-
-const ABAS = ['Folhas de Medição', 'Regras de Faturamento', 'Boletim', 'Relatórios', 'Cadastros'];
+import { G, gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen, PillDD, Selo, RotaMotif } from '../gestorUI.jsx';
 
 const TURNOS = [
   { value: 'rota', label: 'ROTA' },
@@ -19,13 +17,24 @@ const TURNOS = [
   { value: 'manutencao', label: 'Manutenção' },
 ];
 
+const badge = {
+  display: 'inline-block',
+  background: G.accentSoft,
+  color: G.accent,
+  borderRadius: 20,
+  padding: '2px 9px',
+  fontSize: '0.75rem',
+  fontWeight: 600,
+};
+
 const overlay = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
 };
 const modalBox = {
-  background: '#fff', borderRadius: 12, padding: 28, width: '100%', maxWidth: 560,
+  background: G.surface, borderRadius: 16, padding: 28, width: '100%', maxWidth: 560,
   boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto',
+  border: `1px solid ${G.border}`,
 };
 const grid2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 };
 
@@ -41,7 +50,10 @@ export default function GestorScreen({ aba }) {
   const [aberta, setAberta] = useState(null);
   const [rotasAbertas, setRotasAbertas] = useState(new Set());
 
-  // edição
+  // Qual dropdown de filtro está aberto
+  const [ddAberto, setDdAberto] = useState('');
+
+  // Edição
   const [editandoRegistro, setEditandoRegistro] = useState(null);
   const [formEdit, setFormEdit] = useState({});
   const [salvandoEdit, setSalvandoEdit] = useState(false);
@@ -75,7 +87,6 @@ export default function GestorScreen({ aba }) {
   function contratoNome(r) { return contratoDeRegistro(r)?.nome || '—'; }
   function veiculoDeRegistro(r) { return todosVeiculos.find(x => x.id === r.veiculo_id) || null; }
 
-  // Marca automaticamente como Dom/Feriado todos os registros cujo dia é domingo
   async function autoMarcarDomingos(folha) {
     const ids = folha.registros
       .filter(r => {
@@ -89,7 +100,6 @@ export default function GestorScreen({ aba }) {
     setRegistros(prev => prev.map(r => ids.includes(r.id) ? { ...r, domingo_feriado: true } : r));
   }
 
-  // ── Handlers de validação / dom-feriado / edição ─────────────────────
   async function handleValidar(r) {
     const novoValor = !r.validado;
     await supabase.from('registros').update({ validado: novoValor }).eq('id', r.id);
@@ -145,7 +155,6 @@ export default function GestorScreen({ aba }) {
     [registros],
   );
 
-  // Rotas disponíveis para o filtro, limitadas ao contrato+mês selecionado
   const rotasDisponiveis = useMemo(() => {
     const ids = new Set(
       registros
@@ -176,7 +185,6 @@ export default function GestorScreen({ aba }) {
       .sort((a, b) => b.mes.localeCompare(a.mes));
   }, [registros, todasRotas, todosContratos, filtroContrato, filtroMes, filtroRota]);
 
-  // Sub-agrupamento por rota dentro de uma folha
   function rotasDaFolha(folha) {
     const map = new Map();
     for (const r of folha.registros) {
@@ -190,7 +198,6 @@ export default function GestorScreen({ aba }) {
   }
 
   function totalKm(folha) { return folha.registros.reduce((acc, r) => acc + kmRodados(r), 0); }
-
   function validadoCount(folha) { return folha.registros.filter(r => r.validado).length; }
   function completoCount(folha) { return folha.registros.filter(r => r.status === 'completo').length; }
 
@@ -234,6 +241,8 @@ export default function GestorScreen({ aba }) {
     XLSX.writeFile(wb, nome);
   }
 
+  function fecharDD() { setTimeout(() => setDdAberto(''), 150); }
+
   return (
     <div>
 
@@ -243,75 +252,123 @@ export default function GestorScreen({ aba }) {
       {aba === 4 && <CadastrosScreen />}
 
       {aba === 0 && (
-        <div>
-          <div style={s.filterRow}>
-            <select value={filtroContrato} onChange={e => setFiltroContrato(e.target.value)} style={s.filterInput}>
-              <option value="">Todos os contratos</option>
-              {contratos.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={filtroMes} onChange={e => setFiltroMes(e.target.value)} style={s.filterInput}>
-              <option value="">Todos os meses</option>
-              {meses.map(m => <option key={m} value={m}>{formatarMes(m)}</option>)}
-            </select>
-            <select value={filtroRota} onChange={e => setFiltroRota(e.target.value)} style={s.filterInput}>
-              <option value="">Todas as rotas</option>
-              {rotasDisponiveis.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
-            </select>
-            <button style={s.btnSecondary} onClick={carregarRegistros}>↻ Atualizar</button>
-            <span style={{ ...s.subtitle, marginLeft: 'auto' }}>
+        <div style={{ maxWidth: 1220 }}>
+
+          {/* Header + Selo */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, marginBottom: 22 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 22, fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.01em', color: G.text }}>
+                Folhas de Medição
+              </h1>
+              <p style={{ margin: 0, fontSize: 13.5, color: G.muted }}>
+                Registros preenchidos pelos motoristas, agrupados por contrato e mês.
+              </p>
+            </div>
+            <Selo num={carregando ? '…' : folhas.length} label="Folhas" />
+          </div>
+
+          {/* Filtros com PillDD */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
+            <PillDD
+              label={filtroContrato || 'Todos os contratos'}
+              open={ddAberto === 'contrato'}
+              onToggle={() => setDdAberto(ddAberto === 'contrato' ? '' : 'contrato')}
+              onBlur={fecharDD}
+              options={[
+                { value: '', label: 'Todos os contratos', active: filtroContrato === '' },
+                ...contratos.map(c => ({ value: c, label: c, active: filtroContrato === c })),
+              ]}
+              onSelect={v => { setFiltroContrato(v); setDdAberto(''); }}
+            />
+            <PillDD
+              label={filtroMes ? formatarMes(filtroMes) : 'Todos os meses'}
+              open={ddAberto === 'mes'}
+              onToggle={() => setDdAberto(ddAberto === 'mes' ? '' : 'mes')}
+              onBlur={fecharDD}
+              options={[
+                { value: '', label: 'Todos os meses', active: filtroMes === '' },
+                ...meses.map(m => ({ value: m, label: formatarMes(m), active: filtroMes === m })),
+              ]}
+              onSelect={v => { setFiltroMes(v); setDdAberto(''); }}
+            />
+            <PillDD
+              label={filtroRota ? (rotasDisponiveis.find(r => String(r.id) === filtroRota)?.nome || 'Rota') : 'Todas as rotas'}
+              open={ddAberto === 'rota'}
+              onToggle={() => setDdAberto(ddAberto === 'rota' ? '' : 'rota')}
+              onBlur={fecharDD}
+              options={[
+                { value: '', label: 'Todas as rotas', active: filtroRota === '' },
+                ...rotasDisponiveis.map(r => ({ value: String(r.id), label: r.nome, active: filtroRota === String(r.id) })),
+              ]}
+              onSelect={v => { setFiltroRota(v); setDdAberto(''); }}
+            />
+            <button style={gBtnSec} onClick={carregarRegistros}>↻ Atualizar</button>
+            <span style={{ color: G.muted, fontSize: 13, marginLeft: 'auto' }}>
               {carregando
                 ? 'Carregando...'
                 : `${folhas.length} folha${folhas.length !== 1 ? 's' : ''} encontrada${folhas.length !== 1 ? 's' : ''}`}
             </span>
           </div>
 
+          {/* Estado vazio */}
           {!carregando && folhas.length === 0 && (
-            <div style={{ ...s.card, textAlign: 'center', color: '#6b7280', padding: '48px 24px' }}>
+            <div style={{ ...gCard, textAlign: 'center', color: G.muted, padding: '48px 24px', marginTop: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, maxWidth: 280, margin: '0 auto 14px' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', border: `1.5px solid ${G.border}`, flexShrink: 0 }} />
+                <div style={{ flex: 1, height: 4, borderRadius: 100, background: G.border }} />
+                <span style={{ width: 7, height: 7, borderRadius: '50%', border: `1.5px solid ${G.border}`, flexShrink: 0 }} />
+              </div>
               Nenhuma folha de medição encontrada.
               <br />
               <span style={{ fontSize: '0.8rem' }}>Os registros aparecem aqui conforme os motoristas preenchem o formulário.</span>
             </div>
           )}
 
+          {/* Lista de folhas */}
           {folhas.map(folha => {
-            const chave     = `${folha.contrato}__${folha.mes}`;
+            const chave      = `${folha.contrato}__${folha.mes}`;
             const estaAberta = aberta === chave;
             const nVal       = validadoCount(folha);
             const nComp      = completoCount(folha);
+            const validPct   = nComp > 0 ? (nVal / nComp) * 100 : 0;
+            const valColor   = (nVal === nComp && nComp > 0) ? G.green : G.accent;
 
             return (
-              <article key={chave} style={s.sheet}>
-                <div style={s.sheetHeader}>
-                  <div>
-                    <h3 style={s.sheetTitle}>{folha.contrato}</h3>
-                    <p style={{ ...s.subtitle, margin: '4px 0 6px' }}>
+              <article key={chave} style={{ ...gCard, marginTop: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3 style={{ margin: 0, fontFamily: 'Space Grotesk, sans-serif', fontSize: 16, fontWeight: 700, color: G.text }}>
+                      {folha.contrato}
+                    </h3>
+                    <p style={{ margin: '4px 0 8px', fontSize: 12.5, color: G.muted }}>
                       {formatarMes(folha.mes)} · Cliente: {folha.cliente}
                     </p>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={s.badge}>{folha.registros.length} registro{folha.registros.length !== 1 ? 's' : ''}</span>
-                      <span style={s.badge}>{totalKm(folha).toLocaleString('pt-BR')} km rodados</span>
-                      <span style={{
-                        ...s.badge,
-                        background: nVal === nComp && nComp > 0 ? '#dcfce7' : '#fef9c3',
-                        color:      nVal === nComp && nComp > 0 ? '#166534' : '#92400e',
-                      }}>
-                        {nVal}/{nComp} validados
-                      </span>
+                      <span style={badge}>{folha.registros.length} registro{folha.registros.length !== 1 ? 's' : ''}</span>
+                      <span style={badge}>{totalKm(folha).toLocaleString('pt-BR')} km rodados</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <button style={s.btnSecondary} onClick={() => {
+                    <button style={gBtnSec} onClick={() => {
                       if (!estaAberta) autoMarcarDomingos(folha);
                       setAberta(estaAberta ? null : chave);
                     }}>
                       {estaAberta ? 'Fechar' : 'Ver registros'}
                     </button>
-                    <button style={s.btnGreen} onClick={() => exportar(folha)}>
+                    <button style={gBtnGreen} onClick={() => exportar(folha)}>
                       Exportar Excel
                     </button>
                   </div>
                 </div>
 
+                {/* Dashed divider + barra de validação */}
+                <RotaMotif
+                  pct={validPct}
+                  color={valColor}
+                  trailingText={`${nVal}/${nComp} validados`}
+                />
+
+                {/* Rotas expandidas */}
                 {estaAberta && rotasDaFolha(folha).map(({ rota, regs }) => {
                   const kmRota   = regs.reduce((a, r) => a + kmRodados(r), 0);
                   const valRota  = regs.filter(r => r.validado).length;
@@ -324,23 +381,23 @@ export default function GestorScreen({ aba }) {
                     return next;
                   });
                   return (
-                    <div key={rotaKey} style={{ marginTop: 10 }}>
+                    <div key={rotaKey} style={{ marginTop: 12 }}>
                       <button
                         onClick={toggleRota}
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center',
                           justifyContent: 'space-between', cursor: 'pointer',
-                          background: C.accentSoft, border: 'none',
-                          borderLeft: `3px solid ${C.accent}`,
-                          padding: '7px 14px', borderRadius: '0 6px 6px 0',
+                          background: G.accentSoft, border: 'none',
+                          padding: '9px 14px', borderRadius: 9,
                           textAlign: 'left',
+                          outline: 'none',
                         }}
                       >
-                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: C.accentDark, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: '0.65rem', color: C.accent }}>{rotaOpen ? '▼' : '▶'}</span>
+                        <span style={{ fontWeight: 700, fontSize: 13.5, color: G.accentDk, display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <span style={{ fontSize: 10 }}>{rotaOpen ? '▼' : '▶'}</span>
                           {rota?.nome || 'Sem rota'}
                         </span>
-                        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                        <span style={{ fontSize: 12, color: G.muted }}>
                           {regs.length} registro{regs.length !== 1 ? 's' : ''} · {kmRota.toLocaleString('pt-BR')} km · {valRota}/{compRota} validados
                         </span>
                       </button>
@@ -367,65 +424,65 @@ export default function GestorScreen({ aba }) {
       {editandoRegistro && (
         <div style={overlay} onClick={e => { if (e.target === e.currentTarget) setEditandoRegistro(null); }}>
           <div style={modalBox}>
-            <h3 style={{ ...s.h2, marginBottom: 16 }}>Editar Registro</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 700, color: G.text, fontFamily: 'Space Grotesk, sans-serif' }}>Editar Registro</h3>
             <form onSubmit={salvarEdicao}>
               <div style={grid2}>
                 <div>
-                  <label style={s.label}>Data</label>
+                  <label style={gLabel}>Data</label>
                   <input type="date" required value={formEdit.data}
                     onChange={e => setFormEdit(f => ({ ...f, data: e.target.value }))}
-                    style={s.input} />
+                    style={{ ...gInput, width: '100%' }} />
                 </div>
                 <div>
-                  <label style={s.label}>Tipo de Turno</label>
+                  <label style={gLabel}>Tipo de Turno</label>
                   <select value={formEdit.tipo_turno}
                     onChange={e => setFormEdit(f => ({ ...f, tipo_turno: e.target.value }))}
-                    style={s.input}>
+                    style={{ ...gInput, width: '100%' }}>
                     {TURNOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={s.label}>Horário Saída</label>
+                  <label style={gLabel}>Horário Saída</label>
                   <input type="time" value={formEdit.horario_saida}
                     onChange={e => setFormEdit(f => ({ ...f, horario_saida: e.target.value }))}
-                    style={s.input} />
+                    style={{ ...gInput, width: '100%' }} />
                 </div>
                 <div>
-                  <label style={s.label}>Horário Chegada</label>
+                  <label style={gLabel}>Horário Chegada</label>
                   <input type="time" value={formEdit.horario_chegada}
                     onChange={e => setFormEdit(f => ({ ...f, horario_chegada: e.target.value }))}
-                    style={s.input} />
+                    style={{ ...gInput, width: '100%' }} />
                 </div>
                 <div>
-                  <label style={s.label}>KM Inicial</label>
+                  <label style={gLabel}>KM Inicial</label>
                   <input type="number" min="0" value={formEdit.km_inicial}
                     onChange={e => setFormEdit(f => ({ ...f, km_inicial: e.target.value }))}
-                    style={s.input} />
+                    style={{ ...gInput, width: '100%' }} />
                 </div>
                 <div>
-                  <label style={s.label}>KM Final</label>
+                  <label style={gLabel}>KM Final</label>
                   <input type="number" min="0" value={formEdit.km_final}
                     onChange={e => setFormEdit(f => ({ ...f, km_final: e.target.value }))}
-                    style={s.input} />
+                    style={{ ...gInput, width: '100%' }} />
                 </div>
               </div>
               <div style={{ marginTop: 14 }}>
-                <label style={s.label}>Finalidade</label>
+                <label style={gLabel}>Finalidade</label>
                 <input value={formEdit.finalidade}
                   onChange={e => setFormEdit(f => ({ ...f, finalidade: e.target.value }))}
-                  style={{ ...s.input, width: '100%' }} placeholder="Ex: GARAGEM - BIG" />
+                  style={{ ...gInput, width: '100%' }} placeholder="Ex: GARAGEM - BIG" />
               </div>
               <div style={{ marginTop: 14 }}>
-                <label style={s.label}>Observação</label>
+                <label style={gLabel}>Observação</label>
                 <input value={formEdit.observacao}
                   onChange={e => setFormEdit(f => ({ ...f, observacao: e.target.value }))}
-                  style={{ ...s.input, width: '100%' }} />
+                  style={{ ...gInput, width: '100%' }} />
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
-                <button type="button" style={s.btnSecondary} onClick={() => setEditandoRegistro(null)}>
+                <button type="button" style={gBtnSec} onClick={() => setEditandoRegistro(null)}>
                   Cancelar
                 </button>
-                <button type="submit" style={s.btn} disabled={salvandoEdit}>
+                <button type="submit" style={gBtn} disabled={salvandoEdit}>
                   {salvandoEdit ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>

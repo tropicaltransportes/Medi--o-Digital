@@ -65,8 +65,8 @@ const TURNO_BADGE = {
 
 function GloboSVG() {
   return (
-    <svg viewBox="0 0 180 180" width="180" height="180"
-      style={{ position: 'absolute', right: -24, bottom: -24, opacity: 0.28, pointerEvents: 'none', zIndex: 0 }}>
+    <svg viewBox="0 0 180 180" width="240" height="240"
+      style={{ position: 'absolute', right: -28, top: '50%', transform: 'translateY(-50%)', opacity: 0.38, pointerEvents: 'none', zIndex: 0 }}>
       <defs>
         <radialGradient id="globeBg" cx="38%" cy="32%" r="68%">
           <stop offset="0%" stopColor="#b8aff8" stopOpacity="0.55"/>

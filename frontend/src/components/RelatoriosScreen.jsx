@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { formatarMes } from '../storage.js';
-import { s, C } from '../styles.js';
 import { exportPDF, btnPDF } from '../utils/pdf.js';
+import { G, gCard, gLabel, gBtnSec, Selo, PillDD } from '../gestorUI.jsx';
 import RelatorioTurnoExtra from './RelatorioTurnoExtra.jsx';
 import RelatorioTurnosRealizados from './RelatorioTurnosRealizados.jsx';
 import RelatorioBuilder from './RelatorioBuilder.jsx';
@@ -119,62 +119,90 @@ export default function RelatoriosScreen() {
   const contratoNome = contratos.find(c => c.id === Number(contratoId))?.nome || '';
   const totalGeral   = colunas.reduce((acc, col) => acc + (totaisColunas[col] || 0), 0);
 
+  const [ddAberto, setDdAberto] = useState('');
+  function fecharDD() { setTimeout(() => setDdAberto(''), 150); }
+
   const subAbaStyle = (i) => ({
-    padding: '6px 16px', border: 'none', background: 'none', cursor: 'pointer',
+    padding: '8px 16px', border: 'none', background: 'none', cursor: 'pointer',
     fontWeight: subAba === i ? 600 : 500, fontSize: '0.83rem',
-    color: subAba === i ? C.accent : C.muted,
-    borderBottom: subAba === i ? `2px solid ${C.accent}` : '2px solid transparent',
+    color: subAba === i ? G.accent : G.muted,
+    borderBottom: subAba === i ? `2px solid ${G.accent}` : '2px solid transparent',
     marginBottom: -1,
     letterSpacing: '0.01em',
+    outline: 'none',
+    fontFamily: 'Manrope, sans-serif',
   });
 
   return (
-    <div>
-      {/* Filtros compartilhados — ocultos no Construtor (tem seus próprios filtros) */}
-      {subAba !== 3 && (
-        <section style={s.card}>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div>
-              <label style={s.label}>Contrato</label>
-              <select value={contratoId} onChange={e => setContratoId(e.target.value)} style={{ ...s.input, minWidth: 220 }}>
-                <option value="">Selecione...</option>
-                {contratos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={s.label}>Mês</label>
-              <select value={mes} onChange={e => setMes(e.target.value)} style={{ ...s.input, minWidth: 160 }}>
-                <option value="">Selecione...</option>
-                {mesesDisponiveis.map(m => <option key={m} value={m}>{formatarMes(m)}</option>)}
-              </select>
-            </div>
-            {contratoId && mes && subAba === 0 && (
-              <button style={s.btnSecondary} onClick={carregarDomFer}>↻ Atualizar</button>
-            )}
-          </div>
-        </section>
-      )}
+    <div style={{ maxWidth: 1220 }}>
+      {/* Header + Selo */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, marginBottom: 18 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 22, fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.01em', color: G.text }}>
+            Relatórios
+          </h1>
+          <p style={{ margin: 0, fontSize: 13.5, color: G.muted }}>
+            Apurações de domingos/feriados, turno extra e distribuição de turnos.
+          </p>
+        </div>
+        <Selo num={contratos.length} label="Contratos" />
+      </div>
 
       {/* Sub-abas */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #e5e7eb' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 18, borderBottom: `1px solid ${G.border}` }}>
         {SUB_ABAS.map((nome, i) => (
           <button key={i} onClick={() => setSubAba(i)} style={subAbaStyle(i)}>{nome}</button>
         ))}
       </div>
 
+      {/* Filtros compartilhados — ocultos no Construtor */}
+      {subAba !== 3 && (
+        <div style={{ ...gCard, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
+          <div>
+            <label style={gLabel}>Contrato</label>
+            <PillDD
+              label={contratos.find(c => String(c.id) === contratoId)?.nome || 'Selecione...'}
+              open={ddAberto === 'contrato'}
+              onToggle={() => setDdAberto(ddAberto === 'contrato' ? '' : 'contrato')}
+              onBlur={fecharDD}
+              options={contratos.map(c => ({ value: String(c.id), label: c.nome, active: String(c.id) === contratoId }))}
+              onSelect={v => { setContratoId(v); setDdAberto(''); }}
+              minWidth={220}
+            />
+          </div>
+          {subAba !== 2 && (
+            <div>
+              <label style={gLabel}>Mês</label>
+              <PillDD
+                label={mes ? formatarMes(mes) : 'Selecione...'}
+                open={ddAberto === 'mes'}
+                onToggle={() => setDdAberto(ddAberto === 'mes' ? '' : 'mes')}
+                onBlur={fecharDD}
+                options={mesesDisponiveis.map(m => ({ value: m, label: formatarMes(m), active: m === mes }))}
+                onSelect={v => { setMes(v); setDdAberto(''); }}
+                minWidth={160}
+              />
+            </div>
+          )}
+          {contratoId && mes && subAba === 0 && (
+            <button style={gBtnSec} onClick={carregarDomFer}>↻ Atualizar</button>
+          )}
+        </div>
+      )}
+
       {/* ── RELATÓRIO DOM/FERIADOS ── */}
       {subAba === 0 && (
         <>
-          {carregando && <p style={{ ...s.subtitle, padding: 24 }}>Carregando...</p>}
+          {carregando && <p style={{ color: G.muted, fontSize: '0.875rem', padding: 24 }}>Carregando...</p>}
 
           {!carregando && contratoId && mes && rotas.length === 0 && (
-            <div style={{ ...s.card, textAlign: 'center', color: '#6b7280', padding: '48px 24px' }}>
+            <div style={{ ...gCard, textAlign: 'center', color: G.muted, padding: '48px 24px' }}>
               Nenhuma rota encontrada para este contrato.
             </div>
           )}
 
           {!carregando && !contratoId && (
-            <div style={{ ...s.card, textAlign: 'center', color: '#6b7280', padding: '48px 24px' }}>
+            <div style={{ ...gCard, textAlign: 'center', color: G.muted, padding: '48px 24px' }}>
               Selecione o contrato e o mês para exibir o relatório.
             </div>
           )}
@@ -182,7 +210,7 @@ export default function RelatoriosScreen() {
           {!carregando && rotas.length > 0 && (
             <>
               <div ref={domFerRef}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#2D2A6E', color: '#fff', borderRadius: '10px 10px 0 0', padding: '10px 16px', fontWeight: 700, fontSize: '0.88rem', marginTop: 8, letterSpacing: '0.03em' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: G.navy, color: '#fff', borderRadius: '12px 12px 0 0', padding: '10px 16px', fontWeight: 700, fontSize: '0.88rem', marginTop: 8, letterSpacing: '0.03em' }}>
                 <span>CONTROLE DE TURNO NORMAL — DOMINGOS E FERIADOS · {contratoNome.toUpperCase()}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontWeight: 400, opacity: 0.7, fontSize: '0.8rem' }}>{formatarMes(mes).toUpperCase()}</span>
@@ -190,7 +218,7 @@ export default function RelatoriosScreen() {
                 </div>
               </div>
 
-              <div style={{ overflowX: 'auto', border: '1px solid #231F5C', borderTop: 0, borderRadius: '0 0 10px 10px', marginBottom: 24 }}>
+              <div style={{ overflowX: 'auto', border: `1px solid ${G.navyBorder}`, borderTop: 0, borderRadius: '0 0 12px 12px', marginBottom: 24 }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                   <thead>
                     <tr>

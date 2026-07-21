@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { kmRodados } from '../storage.js';
-import { s, C } from '../styles.js';
+import { G, gTh, gTd, gBtnSec } from '../gestorUI.jsx';
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 function formatarData(iso) {
@@ -18,7 +18,7 @@ const statusPill = {
   completo:  { ...pill, background: '#dcfce7', color: '#166534' },
 };
 const turnoPill = {
-  rota:             { ...pill, background: C.accentSoft, color: C.accentDark },
+  rota:             { ...pill, background: G.accentSoft, color: G.accentDk },
   'turno extra':    { ...pill, background: '#fef9c3', color: '#713f12' },
   'rodada interna': { ...pill, background: '#f3e8ff', color: '#6b21a8' },
   manutencao:       { ...pill, background: '#f1f5f9', color: '#475569' },
@@ -27,8 +27,9 @@ const turnoPill = {
 };
 
 const btnAcao = {
-  border: `1px solid ${C.border}`, borderRadius: 6, padding: '3px 10px',
-  fontSize: '0.74rem', cursor: 'pointer', background: C.surface, fontWeight: 500, color: C.text,
+  border: `1px solid ${G.border}`, borderRadius: 7, padding: '4px 10px',
+  fontSize: '0.74rem', cursor: 'pointer', background: G.surface, fontWeight: 600, color: G.text,
+  fontFamily: 'Manrope, sans-serif',
 };
 
 const TURNO_ORDER = { rota: 0, normal: 1, 'turno extra': 2, 'rodada interna': 3, manutencao: 4 };
@@ -55,7 +56,7 @@ const VISIVEIS_PADRAO = Object.fromEntries(ALL_COLS.map(c => [c.id, true]));
 
 function indicador(colId, ordem) {
   if (ordem.col !== colId) return <span style={{ color: 'rgba(120,119,160,0.4)', fontSize: '0.6rem', marginLeft: 3 }}>⇅</span>;
-  return <span style={{ color: C.accent, fontSize: '0.68rem', marginLeft: 3 }}>{ordem.dir === 'asc' ? '↑' : '↓'}</span>;
+  return <span style={{ color: G.accent, fontSize: '0.68rem', marginLeft: 3 }}>{ordem.dir === 'asc' ? '↑' : '↓'}</span>;
 }
 
 export default function RegistrosTable({
@@ -86,7 +87,7 @@ export default function RegistrosTable({
   }, [painelAberto]);
 
   if (!registros.length) {
-    return <p style={{ ...s.subtitle, marginTop: 12 }}>Nenhum registro encontrado.</p>;
+    return <p style={{ color: G.muted, fontSize: '0.82rem', marginTop: 12 }}>Nenhum registro encontrado.</p>;
   }
 
   function rotaNome(r) {
@@ -145,37 +146,37 @@ export default function RegistrosTable({
   const colsToggle = ALL_COLS.filter(c => !c.gestor || modoGestor);
 
   const thStyle = (col) => ({
-    ...s.th,
+    ...gTh,
     cursor: col.sortable ? 'pointer' : 'default',
     userSelect: 'none',
     whiteSpace: 'nowrap',
     textAlign: col.align || undefined,
-    background: (col.sortable && ordem.col === col.id) ? C.accentSoft : undefined,
-    color: (col.sortable && ordem.col === col.id) ? C.accentDark : undefined,
+    background: (col.sortable && ordem.col === col.id) ? G.accent : G.accentSoft,
+    color: (col.sortable && ordem.col === col.id) ? '#fff' : G.accentDk,
   });
 
   function renderCelula(col, r) {
     switch (col.id) {
       case 'dom_fer':
         return (
-          <td key={col.id} style={{ ...s.td, textAlign: 'center' }}>
+          <td key={col.id} style={{ ...gTd, textAlign: 'center' }}>
             <input type="checkbox" title="Marcar como Domingo / Feriado"
               checked={Boolean(r.domingo_feriado)}
               onChange={e => onDomingoFeriado(r, e.target.checked)}
               style={{ cursor: 'pointer', width: 16, height: 16 }} />
           </td>
         );
-      case 'rota':    return <td key={col.id} style={s.td}>{rotaNome(r)}</td>;
-      case 'veiculo': return <td key={col.id} style={s.td}>{veiculoPlaca(r)}</td>;
-      case 'data':    return <td key={col.id} style={s.td}>{formatarData(r.data)}</td>;
-      case 'saida':   return <td key={col.id} style={s.td}>{r.horario_saida?.slice(0, 5) || '—'}</td>;
-      case 'chegada': return <td key={col.id} style={s.td}>{r.horario_chegada?.slice(0, 5) || '—'}</td>;
-      case 'km_ini':  return <td key={col.id} style={s.td}>{r.km_inicial}</td>;
-      case 'km_fin':  return <td key={col.id} style={s.td}>{r.km_final ?? '—'}</td>;
-      case 'km_rod':  return <td key={col.id} style={{ ...s.td, fontWeight: 600 }}>{kmRodados(r)}</td>;
+      case 'rota':    return <td key={col.id} style={gTd}>{rotaNome(r)}</td>;
+      case 'veiculo': return <td key={col.id} style={gTd}>{veiculoPlaca(r)}</td>;
+      case 'data':    return <td key={col.id} style={gTd}>{formatarData(r.data)}</td>;
+      case 'saida':   return <td key={col.id} style={gTd}>{r.horario_saida?.slice(0, 5) || '—'}</td>;
+      case 'chegada': return <td key={col.id} style={gTd}>{r.horario_chegada?.slice(0, 5) || '—'}</td>;
+      case 'km_ini':  return <td key={col.id} style={gTd}>{r.km_inicial}</td>;
+      case 'km_fin':  return <td key={col.id} style={gTd}>{r.km_final ?? '—'}</td>;
+      case 'km_rod':  return <td key={col.id} style={{ ...gTd, fontWeight: 600 }}>{kmRodados(r)}</td>;
       case 'turno':
         return (
-          <td key={col.id} style={s.td}>
+          <td key={col.id} style={gTd}>
             {r.domingo_feriado
               ? <span style={turnoPill.domfer}>Dom/Fer</span>
               : r.tipo_turno === 'rota'           ? <span style={turnoPill.rota}>Rota</span>
@@ -187,7 +188,7 @@ export default function RegistrosTable({
         );
       case 'status':
         return (
-          <td key={col.id} style={s.td}>
+          <td key={col.id} style={gTd}>
             <span style={statusPill[r.status] || pill}>
               {r.status === 'rascunho' ? 'Rascunho' : 'Completo'}
             </span>
@@ -195,25 +196,25 @@ export default function RegistrosTable({
         );
       case 'obs':
         return (
-          <td key={col.id} style={{ ...s.td, color: '#6b7280', maxWidth: 180 }}>
+          <td key={col.id} style={{ ...gTd, color: '#6b7280', maxWidth: 180 }}>
             {[r.finalidade, r.observacao].filter(Boolean).join(' · ') || '—'}
           </td>
         );
       case 'acoes':
         return (
-          <td key={col.id} style={{ ...s.td, whiteSpace: 'nowrap' }}>
+          <td key={col.id} style={{ ...gTd, whiteSpace: 'nowrap' }}>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               {r.status === 'completo' && (
                 <button onClick={() => onValidar(r)} style={{
                   ...btnAcao,
-                  background: r.validado ? '#dcfce7' : C.surface,
-                  color: r.validado ? '#166534' : C.muted,
-                  borderColor: r.validado ? '#86efac' : C.border,
+                  background: r.validado ? '#dcfce7' : G.surface,
+                  color: r.validado ? '#166534' : G.muted,
+                  borderColor: r.validado ? '#86efac' : G.border,
                 }}>
                   {r.validado ? '✓ Validado' : 'Validar'}
                 </button>
               )}
-              <button onClick={() => onEditar(r)} style={{ ...btnAcao, color: C.accent, borderColor: C.accentSoft }}>
+              <button onClick={() => onEditar(r)} style={{ ...btnAcao, color: G.accent, borderColor: G.accentSoft }}>
                 Editar
               </button>
             </div>
@@ -233,27 +234,28 @@ export default function RegistrosTable({
         <button
           onClick={() => setPainelAberto(p => !p)}
           style={{
-            ...s.btnSecondary, fontSize: '0.78rem', padding: '4px 10px',
-            display: 'flex', alignItems: 'center', gap: 5,
-            background: ocultasCount > 0 ? C.accentSoft : C.surface,
-            borderColor: ocultasCount > 0 ? C.accentMid : C.border,
-            color: ocultasCount > 0 ? C.accent : C.text,
+            fontSize: '0.78rem', padding: '4px 10px', cursor: 'pointer',
+            border: `1px solid ${ocultasCount > 0 ? G.border : G.border}`, borderRadius: 100,
+            display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'Manrope, sans-serif',
+            background: ocultasCount > 0 ? G.accentSoft : G.surface,
+            borderColor: ocultasCount > 0 ? G.border : G.border,
+            color: ocultasCount > 0 ? G.accent : G.text,
           }}
         >
-          ⊞ Colunas {ocultasCount > 0 && <span style={{ background: C.accent, color: '#fff', borderRadius: 10, padding: '0 5px', fontSize: '0.68rem' }}>{ocultasCount} oculta{ocultasCount > 1 ? 's' : ''}</span>}
+          ⊞ Colunas {ocultasCount > 0 && <span style={{ background: G.accent, color: '#fff', borderRadius: 10, padding: '0 5px', fontSize: '0.68rem' }}>{ocultasCount} oculta{ocultasCount > 1 ? 's' : ''}</span>}
         </button>
 
         {painelAberto && (
           <div style={{
             position: 'absolute', top: '100%', right: 0, zIndex: 300,
-            background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10,
-            boxShadow: `0 8px 32px ${C.shadowMd}`, padding: '12px 16px',
+            background: G.surface, border: `1px solid ${G.border}`, borderRadius: 10,
+            boxShadow: '0 8px 32px rgba(60,40,120,0.12)', padding: '12px 16px',
             minWidth: 260,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontWeight: 600, fontSize: '0.8rem', color: C.text }}>Colunas visíveis</span>
+              <span style={{ fontWeight: 600, fontSize: '0.8rem', color: G.text }}>Colunas visíveis</span>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button style={{ fontSize: '0.72rem', color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                <button style={{ fontSize: '0.72rem', color: G.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   onClick={() => setVisiveis(Object.fromEntries(colsToggle.map(c => [c.id, true])))}>
                   Todas
                 </button>
@@ -286,8 +288,8 @@ export default function RegistrosTable({
       </div>}
 
       {/* Tabela */}
-      <div style={s.tableWrap}>
-        <table style={s.table}>
+      <div style={{ overflowX: 'auto', marginTop: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
             <tr>
               {colsVisiveis.map(col => (
