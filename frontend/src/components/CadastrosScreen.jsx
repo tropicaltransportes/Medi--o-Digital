@@ -1,28 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase.js';
-import { s } from '../styles.js';
+import { G, gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen, gBtnDanger, gTh, gTd, Selo } from '../gestorUI.jsx';
 
 const TIPOS_VEICULO = ['RODOVIÁRIO', 'SEMI RODOVIÁRIO', 'URBANO', 'MICRO', 'VAN', 'PEQUENO PORTE'];
 const ABAS = ['Contratos', 'Rotas', 'Veículos', 'Logins'];
 
-const btnRed = { ...s.btnSecondary, color: '#dc2626', borderColor: '#fca5a5', padding: '3px 10px', fontSize: '0.78rem' };
-const thS = { ...s.th };
-const tdS = { ...s.td };
+const thS = gTh;
+const tdS = gTd;
 
 export default function CadastrosScreen() {
   const [aba, setAba] = useState(0);
 
   return (
     <div>
+      {/* Header + Selo */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, marginBottom: 18 }}>
+        <div>
+          <h1 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 22, fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.01em', color: G.text }}>
+            Cadastros
+          </h1>
+          <p style={{ margin: 0, fontSize: 13.5, color: G.muted }}>
+            Contratos, rotas, veículos e usuários do sistema.
+          </p>
+        </div>
+      </div>
+
       {/* Sub-abas */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid #e5e7eb' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: `1px solid ${G.border}` }}>
         {ABAS.map((nome, i) => (
           <button key={i} onClick={() => setAba(i)} style={{
-            padding: '6px 18px', border: 'none', background: 'none', cursor: 'pointer',
+            padding: '8px 18px', border: 'none', background: 'none', cursor: 'pointer',
             fontWeight: 600, fontSize: '0.875rem',
-            color: aba === i ? '#2563eb' : '#6b7280',
-            borderBottom: aba === i ? '2px solid #2563eb' : '2px solid transparent',
+            color: aba === i ? G.accent : G.muted,
+            borderBottom: aba === i ? `2px solid ${G.accent}` : '2px solid transparent',
             marginBottom: -1,
+            outline: 'none',
+            fontFamily: 'Manrope, sans-serif',
           }}>
             {nome}
           </button>
@@ -63,28 +76,28 @@ function ContratosSection() {
   }
 
   return (
-    <section style={s.card}>
-      <h2 style={s.h2}>Contratos</h2>
+    <section style={gCard}>
+      <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700, color: G.text, fontFamily: 'Space Grotesk, sans-serif' }}>Contratos</h2>
       <form onSubmit={adicionar} style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div>
-          <label style={s.label}>Nome do contrato</label>
-          <input required value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} style={{ ...s.input, width: 220 }} placeholder="Ex: BAYER - SITE" />
+          <label style={gLabel}>Nome do contrato</label>
+          <input required value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} style={{ ...gInput, width: 220 }} placeholder="Ex: BAYER - SITE" />
         </div>
         <div>
-          <label style={s.label}>Cliente</label>
-          <input required value={form.cliente} onChange={e => setForm(f => ({ ...f, cliente: e.target.value }))} style={{ ...s.input, width: 220 }} placeholder="Ex: Bayer S.A." />
+          <label style={gLabel}>Cliente</label>
+          <input required value={form.cliente} onChange={e => setForm(f => ({ ...f, cliente: e.target.value }))} style={{ ...gInput, width: 220 }} placeholder="Ex: Bayer S.A." />
         </div>
-        <button style={s.btnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
+        <button style={gBtnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
       </form>
-      <div style={s.tableWrap}>
-        <table style={s.table}>
+      <div style={{ overflowX: 'auto', marginTop: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead><tr><th style={thS}>Nome</th><th style={thS}>Cliente</th><th style={thS}></th></tr></thead>
           <tbody>
             {lista.map(c => (
               <tr key={c.id}>
                 <td style={{ ...tdS, fontWeight: 600 }}>{c.nome}</td>
                 <td style={tdS}>{c.cliente}</td>
-                <td style={tdS}><button style={btnRed} onClick={() => remover(c.id)}>Remover</button></td>
+                <td style={tdS}><button style={gBtnDanger} onClick={() => remover(c.id)}>Remover</button></td>
               </tr>
             ))}
           </tbody>
@@ -128,28 +141,28 @@ function RotasSection() {
   }
 
   return (
-    <section style={s.card}>
-      <h2 style={s.h2}>Rotas</h2>
+    <section style={gCard}>
+      <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700, color: G.text, fontFamily: 'Space Grotesk, sans-serif' }}>Rotas</h2>
       <form onSubmit={adicionar} style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div>
-          <label style={s.label}>Contrato</label>
-          <select required value={form.contrato_id} onChange={e => setForm(f => ({ ...f, contrato_id: e.target.value }))} style={{ ...s.input, width: 220 }}>
+          <label style={gLabel}>Contrato</label>
+          <select required value={form.contrato_id} onChange={e => setForm(f => ({ ...f, contrato_id: e.target.value }))} style={{ ...gInput, width: 220 }}>
             <option value="">Selecione...</option>
             {contratos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>
         <div>
-          <label style={s.label}>Nome da rota</label>
-          <input required value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} style={{ ...s.input, width: 160 }} placeholder="Ex: M1" />
+          <label style={gLabel}>Nome da rota</label>
+          <input required value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} style={{ ...gInput, width: 160 }} placeholder="Ex: M1" />
         </div>
         <div>
-          <label style={s.label}>Local</label>
-          <input value={form.local} onChange={e => setForm(f => ({ ...f, local: e.target.value }))} style={{ ...s.input, width: 180 }} placeholder="Ex: PETROLINA" />
+          <label style={gLabel}>Local</label>
+          <input value={form.local} onChange={e => setForm(f => ({ ...f, local: e.target.value }))} style={{ ...gInput, width: 180 }} placeholder="Ex: PETROLINA" />
         </div>
-        <button style={s.btnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
+        <button style={gBtnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
       </form>
-      <div style={s.tableWrap}>
-        <table style={s.table}>
+      <div style={{ overflowX: 'auto', marginTop: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead><tr><th style={thS}>Rota</th><th style={thS}>Local</th><th style={thS}>Contrato</th><th style={thS}></th></tr></thead>
           <tbody>
             {lista.map(r => (
@@ -159,12 +172,12 @@ function RotasSection() {
                   <input
                     defaultValue={r.local || ''}
                     onBlur={e => salvarLocal(r.id, e.target.value)}
-                    style={{ ...s.input, width: 160, padding: '3px 8px' }}
+                    style={{ ...gInput, width: 160, padding: '3px 8px' }}
                     placeholder="—"
                   />
                 </td>
                 <td style={tdS}>{r.contratos?.nome || '—'}</td>
-                <td style={tdS}><button style={btnRed} onClick={() => remover(r.id)}>Remover</button></td>
+                <td style={tdS}><button style={gBtnDanger} onClick={() => remover(r.id)}>Remover</button></td>
               </tr>
             ))}
           </tbody>
@@ -204,28 +217,28 @@ function VeiculosSection() {
   }
 
   return (
-    <section style={s.card}>
-      <h2 style={s.h2}>Veículos</h2>
+    <section style={gCard}>
+      <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700, color: G.text, fontFamily: 'Space Grotesk, sans-serif' }}>Veículos</h2>
       <form onSubmit={adicionar} style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div>
-          <label style={s.label}>Placa</label>
-          <input required value={form.placa} onChange={e => setForm(f => ({ ...f, placa: e.target.value }))} style={{ ...s.input, width: 130 }} placeholder="Ex: PEF7B61" maxLength={8} />
+          <label style={gLabel}>Placa</label>
+          <input required value={form.placa} onChange={e => setForm(f => ({ ...f, placa: e.target.value }))} style={{ ...gInput, width: 130 }} placeholder="Ex: PEF7B61" maxLength={8} />
         </div>
         <div>
-          <label style={s.label}>Descrição</label>
-          <input required value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} style={{ ...s.input, width: 180 }} placeholder="Ex: Ônibus" />
+          <label style={gLabel}>Descrição</label>
+          <input required value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} style={{ ...gInput, width: 180 }} placeholder="Ex: Ônibus" />
         </div>
         <div>
-          <label style={s.label}>Configuração</label>
-          <select value={form.configuracao} onChange={e => setForm(f => ({ ...f, configuracao: e.target.value }))} style={{ ...s.input, width: 180 }}>
+          <label style={gLabel}>Configuração</label>
+          <select value={form.configuracao} onChange={e => setForm(f => ({ ...f, configuracao: e.target.value }))} style={{ ...gInput, width: 180 }}>
             <option value="">Sem configuração</option>
             {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
-        <button style={s.btnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
+        <button style={gBtnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
       </form>
-      <div style={s.tableWrap}>
-        <table style={s.table}>
+      <div style={{ overflowX: 'auto', marginTop: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead><tr><th style={thS}>Placa</th><th style={thS}>Descrição</th><th style={thS}>Configuração</th><th style={thS}></th></tr></thead>
           <tbody>
             {lista.map(v => (
@@ -233,12 +246,12 @@ function VeiculosSection() {
                 <td style={{ ...tdS, fontWeight: 600 }}>{v.placa}</td>
                 <td style={tdS}>{v.descricao}</td>
                 <td style={tdS}>
-                  <select value={v.configuracao || ''} onChange={e => salvarConfig(v.id, e.target.value)} style={{ ...s.input, width: 180, padding: '3px 8px' }}>
+                  <select value={v.configuracao || ''} onChange={e => salvarConfig(v.id, e.target.value)} style={{ ...gInput, width: 180, padding: '3px 8px' }}>
                     <option value="">Sem configuração</option>
                     {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </td>
-                <td style={tdS}><button style={btnRed} onClick={() => remover(v.id)}>Remover</button></td>
+                <td style={tdS}><button style={gBtnDanger} onClick={() => remover(v.id)}>Remover</button></td>
               </tr>
             ))}
           </tbody>
@@ -292,8 +305,8 @@ function LoginsSection() {
   }
 
   return (
-    <section style={s.card}>
-      <h2 style={s.h2}>Logins</h2>
+    <section style={gCard}>
+      <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700, color: G.text, fontFamily: 'Space Grotesk, sans-serif' }}>Logins</h2>
 
       {/* Modal senha temporária */}
       {senhaTemp && (
@@ -317,7 +330,7 @@ function LoginsSection() {
             <p style={{ margin: '0 0 16px', fontSize: '0.78rem', color: '#9ca3af' }}>
               Login: {senhaTemp.email}
             </p>
-            <button style={{ ...s.btn, width: '100%' }} onClick={() => setSenhaTemp(null)}>
+            <button style={{ ...gBtn, width: '100%' }} onClick={() => setSenhaTemp(null)}>
               Fechar
             </button>
           </div>
@@ -326,29 +339,29 @@ function LoginsSection() {
 
       <form onSubmit={adicionar} style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div>
-          <label style={s.label}>Nome</label>
-          <input required value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} style={{ ...s.input, width: 180 }} placeholder="Ex: João Silva" />
+          <label style={gLabel}>Nome</label>
+          <input required value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} style={{ ...gInput, width: 180 }} placeholder="Ex: João Silva" />
         </div>
         <div>
-          <label style={s.label}>E-mail</label>
-          <input required type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={{ ...s.input, width: 200 }} placeholder="joao@empresa.com" />
+          <label style={gLabel}>E-mail</label>
+          <input required type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={{ ...gInput, width: 200 }} placeholder="joao@empresa.com" />
         </div>
         <div>
-          <label style={s.label}>Senha</label>
-          <input required type="password" minLength={4} value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} style={{ ...s.input, width: 150 }} placeholder="Mínimo 4 caracteres" />
+          <label style={gLabel}>Senha</label>
+          <input required type="password" minLength={4} value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} style={{ ...gInput, width: 150 }} placeholder="Mínimo 4 caracteres" />
         </div>
         <div>
-          <label style={s.label}>Perfil</label>
-          <select value={form.perfil} onChange={e => setForm(f => ({ ...f, perfil: e.target.value }))} style={{ ...s.input, width: 140 }}>
+          <label style={gLabel}>Perfil</label>
+          <select value={form.perfil} onChange={e => setForm(f => ({ ...f, perfil: e.target.value }))} style={{ ...gInput, width: 140 }}>
             <option value="motorista">Motorista</option>
             <option value="gestor">Gestor</option>
           </select>
         </div>
-        <button style={s.btnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
+        <button style={gBtnGreen} type="submit" disabled={salvando}>+ Adicionar</button>
       </form>
       {erro && <p style={{ color: '#dc2626', fontSize: '0.85rem', marginBottom: 8 }}>{erro}</p>}
-      <div style={s.tableWrap}>
-        <table style={s.table}>
+      <div style={{ overflowX: 'auto', marginTop: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead><tr><th style={thS}>Nome</th><th style={thS}>E-mail</th><th style={thS}>Perfil</th><th style={thS}></th></tr></thead>
           <tbody>
             {lista.map(u => (
@@ -362,10 +375,10 @@ function LoginsSection() {
                 </td>
                 <td style={{ ...tdS, whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button style={{ ...s.btnSecondary, padding: '3px 10px', fontSize: '0.78rem' }} onClick={() => redefinirSenha(u)}>
+                    <button style={{ ...gBtnSec, padding: '3px 10px', fontSize: '0.78rem' }} onClick={() => redefinirSenha(u)}>
                       Redefinir senha
                     </button>
-                    <button style={btnRed} onClick={() => remover(u.id)}>Remover</button>
+                    <button style={gBtnDanger} onClick={() => remover(u.id)}>Remover</button>
                   </div>
                 </td>
               </tr>
