@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase.js';
-import { G, gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen, gBtnDanger, gTh, gTd, Selo } from '../gestorUI.jsx';
+import { useG, getStyles, Selo } from '../gestorUI.jsx';
 
 const TIPOS_VEICULO = ['RODOVIÁRIO', 'SEMI RODOVIÁRIO', 'URBANO', 'MICRO', 'VAN', 'PEQUENO PORTE'];
 const ABAS = ['Contratos', 'Rotas', 'Veículos', 'Logins'];
 
-const thS = gTh;
-const tdS = gTd;
-
 export default function CadastrosScreen() {
+  const G = useG();
+  const { gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen, gBtnDanger, gTh, gTd } = getStyles(G);
   const [aba, setAba] = useState(0);
 
   return (

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { kmRodados } from '../storage.js';
-import { G, gTh, gTd, gBtnSec } from '../gestorUI.jsx';
+import { useG, getStyles } from '../gestorUI.jsx';
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 function formatarData(iso) {
@@ -17,20 +17,24 @@ const statusPill = {
   rascunho: { ...pill, background: '#fef3c7', color: '#92400e' },
   completo:  { ...pill, background: '#dcfce7', color: '#166534' },
 };
-const turnoPill = {
-  rota:             { ...pill, background: G.accentSoft, color: G.accentDk },
-  'turno extra':    { ...pill, background: '#fef9c3', color: '#713f12' },
-  'rodada interna': { ...pill, background: '#f3e8ff', color: '#6b21a8' },
-  manutencao:       { ...pill, background: '#f1f5f9', color: '#475569' },
-  normal:           { ...pill, background: '#f1f5f9', color: '#475569' },
-  domfer:           { ...pill, background: '#ffedd5', color: '#9a3412' },
-};
+function makeTurnoPill(G) {
+  return {
+    rota:             { ...pill, background: G.accentSoft, color: G.accentDk },
+    'turno extra':    { ...pill, background: '#fef9c3', color: '#713f12' },
+    'rodada interna': { ...pill, background: '#f3e8ff', color: '#6b21a8' },
+    manutencao:       { ...pill, background: '#f1f5f9', color: '#475569' },
+    normal:           { ...pill, background: '#f1f5f9', color: '#475569' },
+    domfer:           { ...pill, background: '#ffedd5', color: '#9a3412' },
+  };
+}
 
-const btnAcao = {
-  border: `1px solid ${G.border}`, borderRadius: 7, padding: '4px 10px',
-  fontSize: '0.74rem', cursor: 'pointer', background: G.surface, fontWeight: 600, color: G.text,
-  fontFamily: 'Manrope, sans-serif',
-};
+function makeBtnAcao(G) {
+  return {
+    border: `1px solid ${G.border}`, borderRadius: 7, padding: '4px 10px',
+    fontSize: '0.74rem', cursor: 'pointer', background: G.surface, fontWeight: 600, color: G.text,
+    fontFamily: 'Manrope, sans-serif',
+  };
+}
 
 const TURNO_ORDER = { rota: 0, normal: 1, 'turno extra': 2, 'rodada interna': 3, manutencao: 4 };
 const DEFAULT_ORDEM = { col: 'data', dir: 'desc' };
@@ -54,7 +58,7 @@ const ALL_COLS = [
 
 const VISIVEIS_PADRAO = Object.fromEntries(ALL_COLS.map(c => [c.id, true]));
 
-function indicador(colId, ordem) {
+function indicador(colId, ordem, G) {
   if (ordem.col !== colId) return <span style={{ color: 'rgba(120,119,160,0.4)', fontSize: '0.6rem', marginLeft: 3 }}>⇅</span>;
   return <span style={{ color: G.accent, fontSize: '0.68rem', marginLeft: 3 }}>{ordem.dir === 'asc' ? '↑' : '↓'}</span>;
 }
@@ -68,6 +72,10 @@ export default function RegistrosTable({
   onDomingoFeriado,
   semToggleColunas = false,
 }) {
+  const G = useG();
+  const { gTh, gTd } = getStyles(G);
+  const turnoPill = makeTurnoPill(G);
+  const btnAcao = makeBtnAcao(G);
   const modoGestor = Boolean(onValidar);
   const [ordem, setOrdem] = useState(DEFAULT_ORDEM);
   const [visiveis, setVisiveis] = useState(VISIVEIS_PADRAO);
@@ -299,7 +307,7 @@ export default function RegistrosTable({
                   onClick={() => col.sortable && toggleOrdem(col.id)}
                 >
                   {col.label}
-                  {col.sortable && indicador(col.id, ordem)}
+                  {col.sortable && indicador(col.id, ordem, G)}
                 </th>
               ))}
             </tr>
