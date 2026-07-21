@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { formatarMes } from '../storage.js';
 import { exportPDF, btnPDF } from '../utils/pdf.js';
-import { G, gCard, gLabel, gBtnSec, Selo, PillDD } from '../gestorUI.jsx';
+import { useG, getStyles, Selo, PillDD } from '../gestorUI.jsx';
 import RelatorioTurnoExtra from './RelatorioTurnoExtra.jsx';
 import RelatorioTurnosRealizados from './RelatorioTurnosRealizados.jsx';
 import RelatorioBuilder from './RelatorioBuilder.jsx';
@@ -37,6 +37,8 @@ const tdRotaNome = { ...td0, fontWeight: 700, background: '#F5F4FB' };
 const tdLocal    = { ...td0, color: '#7877A0', background: '#F5F4FB' };
 
 export default function RelatoriosScreen() {
+  const G = useG();
+  const { gCard, gLabel, gBtnSec } = getStyles(G);
   const domFerRef = useRef(null);
   const [subAba, setSubAba] = useState(0);
 

@@ -7,7 +7,7 @@ import RegrasScreen from './RegrasScreen.jsx';
 import BoletimScreen from './BoletimScreen.jsx';
 import CadastrosScreen from './CadastrosScreen.jsx';
 import RelatoriosScreen from './RelatoriosScreen.jsx';
-import { G, gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen, PillDD, Selo, RotaMotif } from '../gestorUI.jsx';
+import { useG, getStyles, PillDD, Selo, RotaMotif } from '../gestorUI.jsx';
 
 const TURNOS = [
   { value: 'rota', label: 'ROTA' },
@@ -17,28 +17,17 @@ const TURNOS = [
   { value: 'manutencao', label: 'Manutenção' },
 ];
 
-const badge = {
-  display: 'inline-block',
-  background: G.accentSoft,
-  color: G.accent,
-  borderRadius: 20,
-  padding: '2px 9px',
-  fontSize: '0.75rem',
-  fontWeight: 600,
-};
-
 const overlay = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
 };
-const modalBox = {
-  background: G.surface, borderRadius: 16, padding: 28, width: '100%', maxWidth: 560,
-  boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto',
-  border: `1px solid ${G.border}`,
-};
 const grid2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 };
 
 export default function GestorScreen({ aba }) {
+  const G = useG();
+  const { gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen } = getStyles(G);
+  const badge = { display: 'inline-block', background: G.accentSoft, color: G.accent, borderRadius: 20, padding: '2px 9px', fontSize: '0.75rem', fontWeight: 600 };
+  const modalBox = { background: G.surface, borderRadius: 16, padding: 28, width: '100%', maxWidth: 560, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${G.border}` };
   const [registros, setRegistros] = useState([]);
   const [todasRotas, setTodasRotas] = useState([]);
   const [todosContratos, setTodosContratos] = useState([]);

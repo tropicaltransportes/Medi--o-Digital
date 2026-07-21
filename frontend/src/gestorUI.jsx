@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 
-// Design tokens — gestor light theme (violet, oklch)
-export const G = {
+// ── TOKENS ───────────────────────────────────────────────
+const GL = {
   pageBg:      'oklch(0.965 0.004 292)',
   surface:     'oklch(1 0 0)',
   surfaceAlt:  'oklch(0.96 0.007 292)',
@@ -20,107 +20,136 @@ export const G = {
   red:         'oklch(0.58 0.19 25)',
 };
 
-export const gCard = {
-  background: G.surface,
-  borderRadius: 16,
-  padding: 20,
-  border: `1px solid ${G.border}`,
-  boxShadow: '0 1px 4px rgba(60,40,120,0.06)',
+const GD = {
+  pageBg:      'oklch(0.12 0.015 292)',
+  surface:     'oklch(0.17 0.02 292)',
+  surfaceAlt:  'oklch(0.22 0.02 292)',
+  text:        'oklch(0.93 0.01 292)',
+  muted:       'oklch(0.58 0.02 292)',
+  border:      'oklch(0.28 0.025 292)',
+  accent:      'oklch(0.68 0.19 292)',
+  accentDk:    'oklch(0.88 0.1 292)',
+  accentSoft:  'oklch(0.22 0.07 292)',
+  navDark:     'oklch(0.68 0.19 292)',
+  green:       'oklch(0.55 0.12 152)',
+  greenSoft:   'oklch(0.19 0.05 152)',
+  greenBorder: 'oklch(0.40 0.09 152)',
+  navy:        'oklch(0.30 0.08 288)',
+  navyBorder:  'oklch(0.43 0.06 288)',
+  red:         'oklch(0.65 0.19 25)',
 };
 
-export const gLabel = {
-  display: 'block',
-  marginBottom: 5,
-  fontWeight: 700,
-  fontSize: '0.78rem',
-  color: G.muted,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-};
+// ── TEMA CONTEXT ─────────────────────────────────────────
+export const ThemeCtx = createContext('claro');
 
-export const gInput = {
-  border: `1.5px solid ${G.border}`,
-  borderRadius: 10,
-  padding: '8px 12px',
-  fontSize: '0.875rem',
-  background: G.surfaceAlt,
-  color: G.text,
-  outline: 'none',
-  boxSizing: 'border-box',
-  fontFamily: 'Manrope, sans-serif',
-};
+export function useG() {
+  const tema = useContext(ThemeCtx);
+  return tema === 'escuro' ? GD : GL;
+}
 
-export const gTh = {
-  background: G.accentSoft,
-  padding: '9px 12px',
-  textAlign: 'left',
-  fontWeight: 700,
-  fontSize: '0.72rem',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  color: G.accentDk,
-  borderBottom: `1px solid ${G.border}`,
-  whiteSpace: 'nowrap',
-};
+// Static G for App.jsx (which is the provider itself)
+export { GL, GD };
 
-export const gTd = {
-  padding: '9px 12px',
-  borderBottom: `1px solid ${G.border}`,
-  verticalAlign: 'top',
-  color: G.text,
-  fontSize: '0.875rem',
-};
+// ── STYLE FACTORIES (use inside components after calling useG()) ──
+export function getStyles(G) {
+  return {
+    gCard: {
+      background: G.surface,
+      borderRadius: 16,
+      padding: 20,
+      border: `1px solid ${G.border}`,
+      boxShadow: '0 1px 4px rgba(60,40,120,0.06)',
+    },
+    gLabel: {
+      display: 'block',
+      marginBottom: 5,
+      fontWeight: 700,
+      fontSize: '0.78rem',
+      color: G.muted,
+      textTransform: 'uppercase',
+      letterSpacing: '0.05em',
+    },
+    gInput: {
+      border: `1.5px solid ${G.border}`,
+      borderRadius: 10,
+      padding: '8px 12px',
+      fontSize: '0.875rem',
+      background: G.surfaceAlt,
+      color: G.text,
+      outline: 'none',
+      boxSizing: 'border-box',
+      fontFamily: 'Manrope, sans-serif',
+    },
+    gTh: {
+      background: G.accentSoft,
+      padding: '9px 12px',
+      textAlign: 'left',
+      fontWeight: 700,
+      fontSize: '0.72rem',
+      textTransform: 'uppercase',
+      letterSpacing: '0.05em',
+      color: G.accentDk,
+      borderBottom: `1px solid ${G.border}`,
+      whiteSpace: 'nowrap',
+    },
+    gTd: {
+      padding: '9px 12px',
+      borderBottom: `1px solid ${G.border}`,
+      verticalAlign: 'top',
+      color: G.text,
+      fontSize: '0.875rem',
+    },
+    gBtn: {
+      border: 0,
+      background: G.accent,
+      color: '#fff',
+      padding: '9px 18px',
+      borderRadius: 100,
+      fontWeight: 700,
+      cursor: 'pointer',
+      fontSize: '0.875rem',
+      fontFamily: 'Manrope, sans-serif',
+    },
+    gBtnSec: {
+      border: `1px solid ${G.border}`,
+      background: G.surface,
+      color: G.text,
+      padding: '7px 16px',
+      borderRadius: 100,
+      cursor: 'pointer',
+      fontWeight: 600,
+      fontSize: '0.875rem',
+      fontFamily: 'Manrope, sans-serif',
+    },
+    gBtnGreen: {
+      border: 0,
+      background: G.green,
+      color: '#fff',
+      padding: '7px 16px',
+      borderRadius: 100,
+      fontWeight: 700,
+      cursor: 'pointer',
+      fontSize: '0.875rem',
+      fontFamily: 'Manrope, sans-serif',
+    },
+    gBtnDanger: {
+      border: `1px solid oklch(0.82 0.12 25)`,
+      background: 'transparent',
+      color: G.red,
+      padding: '4px 10px',
+      borderRadius: 8,
+      cursor: 'pointer',
+      fontWeight: 600,
+      fontSize: '0.78rem',
+      fontFamily: 'Manrope, sans-serif',
+    },
+  };
+}
 
-export const gBtn = {
-  border: 0,
-  background: G.accent,
-  color: '#fff',
-  padding: '9px 18px',
-  borderRadius: 100,
-  fontWeight: 700,
-  cursor: 'pointer',
-  fontSize: '0.875rem',
-  fontFamily: 'Manrope, sans-serif',
-};
+// ── SHARED COMPONENTS ─────────────────────────────────────
 
-export const gBtnSec = {
-  border: `1px solid ${G.border}`,
-  background: G.surface,
-  color: G.text,
-  padding: '7px 16px',
-  borderRadius: 100,
-  cursor: 'pointer',
-  fontWeight: 600,
-  fontSize: '0.875rem',
-  fontFamily: 'Manrope, sans-serif',
-};
-
-export const gBtnGreen = {
-  border: 0,
-  background: G.green,
-  color: '#fff',
-  padding: '7px 16px',
-  borderRadius: 100,
-  fontWeight: 700,
-  cursor: 'pointer',
-  fontSize: '0.875rem',
-  fontFamily: 'Manrope, sans-serif',
-};
-
-export const gBtnDanger = {
-  border: `1px solid oklch(0.82 0.12 25)`,
-  background: 'transparent',
-  color: G.red,
-  padding: '4px 10px',
-  borderRadius: 8,
-  cursor: 'pointer',
-  fontWeight: 600,
-  fontSize: '0.78rem',
-  fontFamily: 'Manrope, sans-serif',
-};
-
-// Custom pill dropdown — replaces native <select> everywhere
 export function PillDD({ label, open, onToggle, onBlur, options, onSelect, fullWidth, minWidth }) {
+  const G = useG();
   return (
     <div style={{ position: 'relative', ...(fullWidth ? { width: '100%' } : {}), ...(minWidth ? { minWidth } : {}) }}>
       <button
@@ -172,8 +201,8 @@ export function PillDD({ label, open, onToggle, onBlur, options, onSelect, fullW
   );
 }
 
-// Metric badge next to section H1
 export function Selo({ num, label }) {
+  const G = useG();
   return (
     <div style={{ background: G.accentSoft, borderRadius: 12, padding: '10px 16px', textAlign: 'center', flexShrink: 0, minWidth: 80 }}>
       <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: 22, color: G.accent, lineHeight: 1.15 }}>{num}</div>
@@ -182,10 +211,8 @@ export function Selo({ num, label }) {
   );
 }
 
-// Route track motif — dashed divider + colored progress bar
-// labelLeft/labelRight: shown above the bar
-// trailingText: shown inline after the right dot
 export function RotaMotif({ pct, color, labelLeft, labelRight, trailingText }) {
+  const G = useG();
   const safeColor = color || G.accent;
   const safePct = Math.min(100, Math.max(0, pct || 0));
   return (

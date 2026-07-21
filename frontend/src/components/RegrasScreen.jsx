@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase.js';
-import { G, gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen, gBtnDanger, gTh, gTd, PillDD, Selo } from '../gestorUI.jsx';
+import { useG, getStyles, PillDD, Selo } from '../gestorUI.jsx';
 
 const TIPOS_VEICULO = ['RODOVIÁRIO', 'SEMI RODOVIÁRIO', 'URBANO', 'MICRO', 'VAN', 'PEQUENO PORTE'];
 
 export default function RegrasScreen() {
+  const G = useG();
+  const { gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen, gBtnDanger, gTh, gTd } = getStyles(G);
   const [contratos, setContratos] = useState([]);
   const [contratoId, setContratoId] = useState('');
   const [regra, setRegra] = useState(null);

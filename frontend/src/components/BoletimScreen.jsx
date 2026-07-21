@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { kmRodados, formatarMes } from '../storage.js';
 import { exportPDF, btnPDF } from '../utils/pdf.js';
-import { G, gCard, gLabel, gInput, gBtnSec, Selo, RotaMotif, PillDD } from '../gestorUI.jsx';
+import { useG, getStyles, Selo, RotaMotif, PillDD } from '../gestorUI.jsx';
 
 const fmt = (n) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -50,6 +50,8 @@ function QuantCell({ value, autoValue, onChange, onReset }) {
 }
 
 export default function BoletimScreen() {
+  const G = useG();
+  const { gCard, gLabel, gInput, gBtnSec } = getStyles(G);
   const boletimRef = useRef(null);
   const [contratos, setContratos] = useState([]);
   const [contratoId, setContratoId] = useState('');
