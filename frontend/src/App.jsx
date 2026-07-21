@@ -59,11 +59,16 @@ const NAV = [
   },
 ];
 
-const RouteLogomark = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="6" cy="18" r="2.2" fill="white" stroke="none"/>
-    <circle cx="18" cy="6" r="2.2" fill="white" stroke="none"/>
-    <path d="M6 18C6 10 10 6 18 6"/>
+const TropicalLogomark = ({ size = 38, primary = '#177A3A', accent = '#2EC052' }) => (
+  <svg width={size} height={Math.round(size * 1.08)} viewBox="0 0 100 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Upper-left convex quarter circle */}
+    <path d="M0,50 A50,50,0,0,1,50,0 L0,0 Z" fill={primary}/>
+    {/* Horizontal connector bar */}
+    <path d="M0,55 L30,55 L30,50 L0,50 Z" fill={primary}/>
+    {/* Upper-right accent quarter circle */}
+    <path d="M84,0 A26,26,0,0,1,58,26 L58,0 Z" fill={accent}/>
+    {/* Lower body large quarter circle */}
+    <path d="M88,55 A56,56,0,0,1,32,111 L32,55 Z" fill={primary}/>
   </svg>
 );
 
@@ -154,13 +159,13 @@ export default function App() {
             <div
               onClick={() => setSidebarAberta(o => !o)}
               title={ab ? 'Retrair menu' : 'Expandir menu'}
-              style={{
-                width: 32, height: 32, borderRadius: 9, background: G.accent, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', userSelect: 'none',
-              }}
+              style={{ flexShrink: 0, cursor: 'pointer', userSelect: 'none', lineHeight: 0 }}
             >
-              <RouteLogomark />
+              <TropicalLogomark
+                size={38}
+                primary={tema === 'escuro' ? '#1E2D3D' : '#177A3A'}
+                accent="#2EC052"
+              />
             </div>
             {ab && (
               <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
