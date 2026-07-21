@@ -84,7 +84,6 @@ export default function App() {
   }
 
   const initials = (usuario.nome || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-
   const ab = sidebarAberta;
 
   return (
@@ -222,14 +221,12 @@ export default function App() {
 
         {/* Utility bar — top right */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          {/* Theme toggle (placeholder) */}
           <span style={{ width: 36, height: 36, borderRadius: 100, background: G.surface, border: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: G.muted, cursor: 'pointer' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="3.2"/>
               <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>
             </svg>
           </span>
-          {/* Notifications */}
           <span style={{ position: 'relative', width: 36, height: 36, borderRadius: 100, background: G.surface, border: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: G.muted, cursor: 'pointer' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -237,7 +234,6 @@ export default function App() {
             </svg>
             <span style={{ position: 'absolute', top: 6, right: 7, width: 6, height: 6, borderRadius: '50%', background: G.red, boxShadow: `0 0 0 2px ${G.surface}` }} />
           </span>
-          {/* Avatar */}
           <span style={{ width: 36, height: 36, borderRadius: 100, background: G.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 700, color: '#fff', fontFamily: 'Space Grotesk, sans-serif', boxShadow: `0 0 0 2px ${G.surface}, 0 0 0 3px ${G.border}` }}>
             {initials}
           </span>
