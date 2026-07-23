@@ -51,6 +51,8 @@ export default function CadastrosScreen() {
 
 /* ── CONTRATOS ─────────────────────────────────────────────────────────── */
 function ContratosSection() {
+  const G = useG();
+  const { gCard, gLabel, gInput, gBtnGreen, gBtnDanger, gTh, gTd } = getStyles(G);
   const [lista, setLista] = useState([]);
   const [form, setForm] = useState({ nome: '', cliente: '' });
   const [salvando, setSalvando] = useState(false);
@@ -90,13 +92,13 @@ function ContratosSection() {
       </form>
       <div style={{ overflowX: 'auto', marginTop: 12 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-          <thead><tr><th style={thS}>Nome</th><th style={thS}>Cliente</th><th style={thS}></th></tr></thead>
+          <thead><tr><th style={gTh}>Nome</th><th style={gTh}>Cliente</th><th style={gTh}></th></tr></thead>
           <tbody>
             {lista.map(c => (
               <tr key={c.id}>
-                <td style={{ ...tdS, fontWeight: 600 }}>{c.nome}</td>
-                <td style={tdS}>{c.cliente}</td>
-                <td style={tdS}><button style={gBtnDanger} onClick={() => remover(c.id)}>Remover</button></td>
+                <td style={{ ...gTd, fontWeight: 600 }}>{c.nome}</td>
+                <td style={gTd}>{c.cliente}</td>
+                <td style={gTd}><button style={gBtnDanger} onClick={() => remover(c.id)}>Remover</button></td>
               </tr>
             ))}
           </tbody>
@@ -108,6 +110,8 @@ function ContratosSection() {
 
 /* ── ROTAS ─────────────────────────────────────────────────────────────── */
 function RotasSection() {
+  const G = useG();
+  const { gCard, gLabel, gInput, gBtnGreen, gBtnDanger, gTh, gTd } = getStyles(G);
   const [lista, setLista] = useState([]);
   const [contratos, setContratos] = useState([]);
   const [form, setForm] = useState({ contrato_id: '', nome: '', local: '' });
@@ -162,12 +166,12 @@ function RotasSection() {
       </form>
       <div style={{ overflowX: 'auto', marginTop: 12 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-          <thead><tr><th style={thS}>Rota</th><th style={thS}>Local</th><th style={thS}>Contrato</th><th style={thS}></th></tr></thead>
+          <thead><tr><th style={gTh}>Rota</th><th style={gTh}>Local</th><th style={gTh}>Contrato</th><th style={gTh}></th></tr></thead>
           <tbody>
             {lista.map(r => (
               <tr key={r.id}>
-                <td style={{ ...tdS, fontWeight: 600 }}>{r.nome}</td>
-                <td style={tdS}>
+                <td style={{ ...gTd, fontWeight: 600 }}>{r.nome}</td>
+                <td style={gTd}>
                   <input
                     defaultValue={r.local || ''}
                     onBlur={e => salvarLocal(r.id, e.target.value)}
@@ -175,8 +179,8 @@ function RotasSection() {
                     placeholder="—"
                   />
                 </td>
-                <td style={tdS}>{r.contratos?.nome || '—'}</td>
-                <td style={tdS}><button style={gBtnDanger} onClick={() => remover(r.id)}>Remover</button></td>
+                <td style={gTd}>{r.contratos?.nome || '—'}</td>
+                <td style={gTd}><button style={gBtnDanger} onClick={() => remover(r.id)}>Remover</button></td>
               </tr>
             ))}
           </tbody>
@@ -188,6 +192,8 @@ function RotasSection() {
 
 /* ── VEÍCULOS ───────────────────────────────────────────────────────────── */
 function VeiculosSection() {
+  const G = useG();
+  const { gCard, gLabel, gInput, gBtnGreen, gBtnDanger, gTh, gTd } = getStyles(G);
   const [lista, setLista] = useState([]);
   const [form, setForm] = useState({ placa: '', descricao: '', configuracao: '' });
   const [salvando, setSalvando] = useState(false);
@@ -238,19 +244,19 @@ function VeiculosSection() {
       </form>
       <div style={{ overflowX: 'auto', marginTop: 12 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-          <thead><tr><th style={thS}>Placa</th><th style={thS}>Descrição</th><th style={thS}>Configuração</th><th style={thS}></th></tr></thead>
+          <thead><tr><th style={gTh}>Placa</th><th style={gTh}>Descrição</th><th style={gTh}>Configuração</th><th style={gTh}></th></tr></thead>
           <tbody>
             {lista.map(v => (
               <tr key={v.id}>
-                <td style={{ ...tdS, fontWeight: 600 }}>{v.placa}</td>
-                <td style={tdS}>{v.descricao}</td>
-                <td style={tdS}>
+                <td style={{ ...gTd, fontWeight: 600 }}>{v.placa}</td>
+                <td style={gTd}>{v.descricao}</td>
+                <td style={gTd}>
                   <select value={v.configuracao || ''} onChange={e => salvarConfig(v.id, e.target.value)} style={{ ...gInput, width: 180, padding: '3px 8px' }}>
                     <option value="">Sem configuração</option>
                     {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </td>
-                <td style={tdS}><button style={gBtnDanger} onClick={() => remover(v.id)}>Remover</button></td>
+                <td style={gTd}><button style={gBtnDanger} onClick={() => remover(v.id)}>Remover</button></td>
               </tr>
             ))}
           </tbody>
@@ -262,6 +268,8 @@ function VeiculosSection() {
 
 /* ── LOGINS ─────────────────────────────────────────────────────────────── */
 function LoginsSection() {
+  const G = useG();
+  const { gCard, gLabel, gInput, gBtn, gBtnSec, gBtnGreen, gBtnDanger, gTh, gTd } = getStyles(G);
   const [lista, setLista] = useState([]);
   const [form, setForm] = useState({ nome: '', email: '', senha: '', perfil: 'motorista' });
   const [salvando, setSalvando] = useState(false);
@@ -361,18 +369,18 @@ function LoginsSection() {
       {erro && <p style={{ color: '#dc2626', fontSize: '0.85rem', marginBottom: 8 }}>{erro}</p>}
       <div style={{ overflowX: 'auto', marginTop: 12 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-          <thead><tr><th style={thS}>Nome</th><th style={thS}>E-mail</th><th style={thS}>Perfil</th><th style={thS}></th></tr></thead>
+          <thead><tr><th style={gTh}>Nome</th><th style={gTh}>E-mail</th><th style={gTh}>Perfil</th><th style={gTh}></th></tr></thead>
           <tbody>
             {lista.map(u => (
               <tr key={u.id}>
-                <td style={{ ...tdS, fontWeight: 600 }}>{u.nome}</td>
-                <td style={tdS}>{u.email}</td>
-                <td style={tdS}>
+                <td style={{ ...gTd, fontWeight: 600 }}>{u.nome}</td>
+                <td style={gTd}>{u.email}</td>
+                <td style={gTd}>
                   <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600, background: u.perfil === 'gestor' ? '#dbeafe' : '#dcfce7', color: u.perfil === 'gestor' ? '#1d4ed8' : '#166534' }}>
                     {u.perfil === 'gestor' ? 'Gestor' : 'Motorista'}
                   </span>
                 </td>
-                <td style={{ ...tdS, whiteSpace: 'nowrap' }}>
+                <td style={{ ...gTd, whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button style={{ ...gBtnSec, padding: '3px 10px', fontSize: '0.78rem' }} onClick={() => redefinirSenha(u)}>
                       Redefinir senha
