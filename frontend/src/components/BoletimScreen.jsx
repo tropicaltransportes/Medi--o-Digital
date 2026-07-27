@@ -177,15 +177,26 @@ export default function BoletimScreen() {
       const teQuant   = adj.teQuant  ?? teQuantAuto;
       const kmExtra   = adj.kmExtra  ?? kmExtraAuto;
 
-      const valorFixo  = billing?.valor_mensal || 0;
-      const tnValor    = billing?.valor_turno_normal || 0;
-      const teValor    = billing?.valor_turno_extra || 0;
-      const kmExValor  = billing?.valor_km_extra_turno_extra || 0;
+      let valorFixo, tnValor, tnTotal, teValor, teTotal, kmExValor, kmExTotal, valorBruto;
+      let valorDiaria = 0, totalTurnos = tnQuant + teQuant;
 
-      const tnTotal    = tnQuant * tnValor;
-      const teTotal    = teQuant * teValor;
-      const kmExTotal  = kmExtra * kmExValor;
-      const valorBruto = valorFixo + tnTotal + teTotal + kmExTotal;
+      if (regra?.tipo_cobranca === 'por_turnos') {
+        valorDiaria  = billing?.valor_diaria || 0;
+        valorFixo    = 0; tnValor = 0; tnTotal = 0;
+        teValor      = 0; teTotal = 0;
+        kmExValor    = 0; kmExTotal = 0;
+        valorBruto   = valorDiaria * totalTurnos;
+      } else {
+        valorFixo  = billing?.valor_mensal || 0;
+        tnValor    = billing?.valor_turno_normal || 0;
+        teValor    = billing?.valor_turno_extra || 0;
+        kmExValor  = billing?.valor_km_extra_turno_extra || 0;
+        tnTotal    = tnQuant * tnValor;
+        teTotal    = teQuant * teValor;
+        kmExTotal  = kmExtra * kmExValor;
+        valorBruto = valorFixo + tnTotal + teTotal + kmExTotal;
+      }
+
       const iss        = valorBruto * (issPercent / 100);
       const valorLiquido = valorBruto - iss;
 
@@ -194,6 +205,7 @@ export default function BoletimScreen() {
         rotaNome: rota?.nome || '—',
         configAtual,
         semConfig: !configAtual || !billing,
+        valorDiaria, totalTurnos,
         valorFixo, tnValor, tnQuant, tnQuantAuto, tnTotal,
         teValor, teQuant, teQuantAuto, teTotal,
         kmExValor, kmExtra, kmExtraAuto, kmExTotal,
@@ -221,6 +233,7 @@ export default function BoletimScreen() {
   const issExtras    = brutoExtras * (issPercent / 100);
   const contratoNome = contratos.find(c => c.id === Number(contratoId))?.nome || '';
   const temAjustes   = Object.keys(ajustes).some(k => Object.keys(ajustes[k]).length > 0);
+  const porTurnos    = regra?.tipo_cobranca === 'por_turnos';
 
   function fecharDD() { setTimeout(() => setDdAberto(''), 150); }
 
@@ -317,101 +330,141 @@ export default function BoletimScreen() {
 
           {/* Tabela principal */}
           <div style={{ overflowX: 'auto', border: `1px solid ${G.greenBorder}`, borderTop: 0, borderRadius: '0 0 12px 12px', marginBottom: 18 }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 900 }}>
-              <thead>
-                <tr>
-                  <th style={th0} rowSpan={2}>ROTA</th>
-                  <th style={{ ...th0, minWidth: 160 }} rowSpan={2}>TIPO</th>
-                  <th style={th0} rowSpan={2}>VALOR FIXO</th>
-                  <th style={{ ...th1, textAlign: 'center' }} colSpan={3}>TURNO NORMAL</th>
-                  <th style={{ ...th0, textAlign: 'center' }} colSpan={3}>TURNO EXTRA</th>
-                  <th style={{ ...th1, textAlign: 'center' }} colSpan={3}>KM EXTRA T. EXTRA</th>
-                  <th style={th0} rowSpan={2}>VALOR BRUTO</th>
-                  <th style={th0} rowSpan={2}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                      ISS
-                      <input
-                        type="number"
-                        value={issPercent}
-                        onChange={e => setIssPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                        min={0} max={100} step={0.5}
-                        style={{
-                          width: 38, textAlign: 'center', fontSize: '0.72rem',
-                          border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3, padding: '1px 2px',
-                          background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 700,
-                        }}
-                      />
-                      %
-                    </div>
-                  </th>
-                  <th style={th0} rowSpan={2}>VALOR LÍQUIDO</th>
-                </tr>
-                <tr>
-                  <th style={th1}>VALOR</th><th style={th1}>QUANT</th><th style={th1}>$ TOTAL</th>
-                  <th style={th0}>VALOR</th><th style={th0}>QUANT</th><th style={th0}>$ TOTAL</th>
-                  <th style={th1}>VALOR</th><th style={th1}>QUANT</th><th style={th1}>$ TOTAL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {linhas.map((l, i) => (
-                  <tr key={l.rota_id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
-                    <td style={td0}>{l.rotaNome}</td>
-                    <td style={{ ...td0, padding: '3px 6px' }}>
-                      <select
-                        value={l.configAtual}
-                        onChange={e => handleConfigChange(l.rota_id, e.target.value)}
-                        disabled={salvandoConfig[l.rota_id]}
-                        style={{
-                          width: '100%', fontSize: '0.78rem', padding: '3px 6px',
-                          border: l.semConfig ? '1px solid #fca5a5' : '1px solid #d1d5db',
-                          borderRadius: 4, background: l.semConfig ? '#fef2f2' : '#fff',
-                          color: l.semConfig ? '#dc2626' : '#111827',
-                          fontWeight: 600, cursor: 'pointer',
-                        }}
-                      >
-                        <option value="">— Selecione —</option>
-                        {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </td>
-                    <td style={tdR}>{fmt(l.valorFixo)}</td>
-                    <td style={tdR}>{fmt(l.tnValor)}</td>
-                    <QuantCell value={l.tnQuant} autoValue={l.tnQuantAuto}
-                      onChange={v => setAjuste(l.rota_id, 'tnQuant', v)}
-                      onReset={() => resetAjuste(l.rota_id, 'tnQuant')} />
-                    <td style={tdR}>{fmt(l.tnTotal)}</td>
-                    <td style={tdR}>{fmt(l.teValor)}</td>
-                    <QuantCell value={l.teQuant} autoValue={l.teQuantAuto}
-                      onChange={v => setAjuste(l.rota_id, 'teQuant', v)}
-                      onReset={() => resetAjuste(l.rota_id, 'teQuant')} />
-                    <td style={tdR}>{fmt(l.teTotal)}</td>
-                    <td style={tdR}>{fmt(l.kmExValor)}</td>
-                    <QuantCell value={l.kmExtra} autoValue={l.kmExtraAuto}
-                      onChange={v => setAjuste(l.rota_id, 'kmExtra', v)}
-                      onReset={() => resetAjuste(l.rota_id, 'kmExtra')} />
-                    <td style={tdR}>{fmt(l.kmExTotal)}</td>
-                    <td style={{ ...tdR, fontWeight: 700 }}>{fmt(l.valorBruto)}</td>
-                    <td style={tdR}>{fmt(l.iss)}</td>
-                    <td style={{ ...tdR, fontWeight: 700, color: '#166534' }}>{fmt(l.valorLiquido)}</td>
+            {porTurnos ? (
+              /* ── TABELA POR TURNOS ── */
+              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
+                <thead>
+                  <tr>
+                    <th style={th0}>ROTA</th>
+                    <th style={{ ...th0, minWidth: 160 }}>TIPO</th>
+                    <th style={th1}>VALOR DIÁRIA</th>
+                    <th style={th1}>QTD TURNOS</th>
+                    <th style={th0}>VALOR BRUTO</th>
+                    <th style={th0}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        ISS
+                        <input type="number" value={issPercent}
+                          onChange={e => setIssPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                          min={0} max={100} step={0.5}
+                          style={{ width: 38, textAlign: 'center', fontSize: '0.72rem', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3, padding: '1px 2px', background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 700 }} />
+                        %
+                      </div>
+                    </th>
+                    <th style={th0}>VALOR LÍQUIDO</th>
                   </tr>
-                ))}
-                <tr>
-                  <td style={tdTot} colSpan={2}>TOTAL GERAL</td>
-                  <td style={tdTotR}>{fmt(tot.valorFixo)}</td>
-                  <td style={tdTot}></td>
-                  <td style={tdTotR}>{tot.tnQuant}</td>
-                  <td style={tdTotR}>{fmt(tot.tnTotal)}</td>
-                  <td style={tdTot}></td>
-                  <td style={tdTotR}>{tot.teQuant}</td>
-                  <td style={tdTotR}>{fmt(tot.teTotal)}</td>
-                  <td style={tdTot}></td>
-                  <td style={tdTotR}>{tot.kmExtra}</td>
-                  <td style={tdTotR}>{fmt(tot.kmExTotal)}</td>
-                  <td style={tdTotR}>{fmt(tot.valorBruto)}</td>
-                  <td style={tdTotR}>{fmt(tot.iss)}</td>
-                  <td style={{ ...tdTotR, color: '#166534' }}>{fmt(tot.valorLiquido)}</td>
-                </tr>
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {linhas.map((l, i) => (
+                    <tr key={l.rota_id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                      <td style={td0}>{l.rotaNome}</td>
+                      <td style={{ ...td0, padding: '3px 6px' }}>
+                        <select value={l.configAtual} onChange={e => handleConfigChange(l.rota_id, e.target.value)}
+                          disabled={salvandoConfig[l.rota_id]}
+                          style={{ width: '100%', fontSize: '0.78rem', padding: '3px 6px', border: l.semConfig ? '1px solid #fca5a5' : '1px solid #d1d5db', borderRadius: 4, background: l.semConfig ? '#fef2f2' : '#fff', color: l.semConfig ? '#dc2626' : '#111827', fontWeight: 600, cursor: 'pointer' }}>
+                          <option value="">— Selecione —</option>
+                          {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </td>
+                      <td style={tdR}>{fmt(l.valorDiaria)}</td>
+                      <QuantCell value={l.tnQuant + l.teQuant} autoValue={l.totalTurnos}
+                        onChange={v => { setAjuste(l.rota_id, 'tnQuant', v); setAjuste(l.rota_id, 'teQuant', 0); }}
+                        onReset={() => { resetAjuste(l.rota_id, 'tnQuant'); resetAjuste(l.rota_id, 'teQuant'); }} />
+                      <td style={{ ...tdR, fontWeight: 700 }}>{fmt(l.valorBruto)}</td>
+                      <td style={tdR}>{fmt(l.iss)}</td>
+                      <td style={{ ...tdR, fontWeight: 700, color: '#166534' }}>{fmt(l.valorLiquido)}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td style={tdTot} colSpan={3}>TOTAL GERAL</td>
+                    <td style={tdTotR}>{linhas.reduce((s, l) => s + l.totalTurnos, 0)}</td>
+                    <td style={tdTotR}>{fmt(tot.valorBruto)}</td>
+                    <td style={tdTotR}>{fmt(tot.iss)}</td>
+                    <td style={{ ...tdTotR, color: '#166534' }}>{fmt(tot.valorLiquido)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : (
+              /* ── TABELA FRANQUIA ── */
+              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 900 }}>
+                <thead>
+                  <tr>
+                    <th style={th0} rowSpan={2}>ROTA</th>
+                    <th style={{ ...th0, minWidth: 160 }} rowSpan={2}>TIPO</th>
+                    <th style={th0} rowSpan={2}>VALOR FIXO</th>
+                    <th style={{ ...th1, textAlign: 'center' }} colSpan={3}>TURNO NORMAL</th>
+                    <th style={{ ...th0, textAlign: 'center' }} colSpan={3}>TURNO EXTRA</th>
+                    <th style={{ ...th1, textAlign: 'center' }} colSpan={3}>KM EXTRA T. EXTRA</th>
+                    <th style={th0} rowSpan={2}>VALOR BRUTO</th>
+                    <th style={th0} rowSpan={2}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        ISS
+                        <input type="number" value={issPercent}
+                          onChange={e => setIssPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                          min={0} max={100} step={0.5}
+                          style={{ width: 38, textAlign: 'center', fontSize: '0.72rem', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3, padding: '1px 2px', background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 700 }} />
+                        %
+                      </div>
+                    </th>
+                    <th style={th0} rowSpan={2}>VALOR LÍQUIDO</th>
+                  </tr>
+                  <tr>
+                    <th style={th1}>VALOR</th><th style={th1}>QUANT</th><th style={th1}>$ TOTAL</th>
+                    <th style={th0}>VALOR</th><th style={th0}>QUANT</th><th style={th0}>$ TOTAL</th>
+                    <th style={th1}>VALOR</th><th style={th1}>QUANT</th><th style={th1}>$ TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {linhas.map((l, i) => (
+                    <tr key={l.rota_id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                      <td style={td0}>{l.rotaNome}</td>
+                      <td style={{ ...td0, padding: '3px 6px' }}>
+                        <select value={l.configAtual} onChange={e => handleConfigChange(l.rota_id, e.target.value)}
+                          disabled={salvandoConfig[l.rota_id]}
+                          style={{ width: '100%', fontSize: '0.78rem', padding: '3px 6px', border: l.semConfig ? '1px solid #fca5a5' : '1px solid #d1d5db', borderRadius: 4, background: l.semConfig ? '#fef2f2' : '#fff', color: l.semConfig ? '#dc2626' : '#111827', fontWeight: 600, cursor: 'pointer' }}>
+                          <option value="">— Selecione —</option>
+                          {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </td>
+                      <td style={tdR}>{fmt(l.valorFixo)}</td>
+                      <td style={tdR}>{fmt(l.tnValor)}</td>
+                      <QuantCell value={l.tnQuant} autoValue={l.tnQuantAuto}
+                        onChange={v => setAjuste(l.rota_id, 'tnQuant', v)}
+                        onReset={() => resetAjuste(l.rota_id, 'tnQuant')} />
+                      <td style={tdR}>{fmt(l.tnTotal)}</td>
+                      <td style={tdR}>{fmt(l.teValor)}</td>
+                      <QuantCell value={l.teQuant} autoValue={l.teQuantAuto}
+                        onChange={v => setAjuste(l.rota_id, 'teQuant', v)}
+                        onReset={() => resetAjuste(l.rota_id, 'teQuant')} />
+                      <td style={tdR}>{fmt(l.teTotal)}</td>
+                      <td style={tdR}>{fmt(l.kmExValor)}</td>
+                      <QuantCell value={l.kmExtra} autoValue={l.kmExtraAuto}
+                        onChange={v => setAjuste(l.rota_id, 'kmExtra', v)}
+                        onReset={() => resetAjuste(l.rota_id, 'kmExtra')} />
+                      <td style={tdR}>{fmt(l.kmExTotal)}</td>
+                      <td style={{ ...tdR, fontWeight: 700 }}>{fmt(l.valorBruto)}</td>
+                      <td style={tdR}>{fmt(l.iss)}</td>
+                      <td style={{ ...tdR, fontWeight: 700, color: '#166534' }}>{fmt(l.valorLiquido)}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td style={tdTot} colSpan={2}>TOTAL GERAL</td>
+                    <td style={tdTotR}>{fmt(tot.valorFixo)}</td>
+                    <td style={tdTot}></td>
+                    <td style={tdTotR}>{tot.tnQuant}</td>
+                    <td style={tdTotR}>{fmt(tot.tnTotal)}</td>
+                    <td style={tdTot}></td>
+                    <td style={tdTotR}>{tot.teQuant}</td>
+                    <td style={tdTotR}>{fmt(tot.teTotal)}</td>
+                    <td style={tdTot}></td>
+                    <td style={tdTotR}>{tot.kmExtra}</td>
+                    <td style={tdTotR}>{fmt(tot.kmExTotal)}</td>
+                    <td style={tdTotR}>{fmt(tot.valorBruto)}</td>
+                    <td style={tdTotR}>{fmt(tot.iss)}</td>
+                    <td style={{ ...tdTotR, color: '#166534' }}>{fmt(tot.valorLiquido)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
           </div>
 
           {/* Resumo */}
@@ -426,18 +479,23 @@ export default function BoletimScreen() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  ['ROTAS (fixo)',        brutoRotas,       issRotas,   brutoRotas  - issRotas],
-                  ['EXTRAS (turnos + km)', brutoExtras,     issExtras,  brutoExtras - issExtras],
-                  ['TOTAL',              tot.valorBruto,    tot.iss,    tot.valorLiquido],
-                ].map(([label, bruto, iss, liq], i) => (
-                  <tr key={i} style={{ background: i === 2 ? '#f0fdf4' : i % 2 === 0 ? '#fff' : '#f9fafb' }}>
-                    <td style={i === 2 ? tdTot : td0}>{label}</td>
-                    <td style={i === 2 ? tdTotR : tdR}>{fmt(bruto)}</td>
-                    <td style={i === 2 ? tdTotR : tdR}>{fmt(iss)}</td>
-                    <td style={{ ...(i === 2 ? tdTotR : tdR), fontWeight: 700, color: '#166534' }}>{fmt(liq)}</td>
-                  </tr>
-                ))}
+                {(porTurnos ? [
+                  ['TOTAL', tot.valorBruto, tot.iss, tot.valorLiquido],
+                ] : [
+                  ['ROTAS (fixo)',          brutoRotas,    issRotas,   brutoRotas  - issRotas],
+                  ['EXTRAS (turnos + km)',  brutoExtras,   issExtras,  brutoExtras - issExtras],
+                  ['TOTAL',                tot.valorBruto, tot.iss,   tot.valorLiquido],
+                ]).map(([label, bruto, iss, liq], i, arr) => {
+                  const isLast = i === arr.length - 1;
+                  return (
+                    <tr key={i} style={{ background: isLast ? '#f0fdf4' : i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                      <td style={isLast ? tdTot : td0}>{label}</td>
+                      <td style={isLast ? tdTotR : tdR}>{fmt(bruto)}</td>
+                      <td style={isLast ? tdTotR : tdR}>{fmt(iss)}</td>
+                      <td style={{ ...(isLast ? tdTotR : tdR), fontWeight: 700, color: '#166534' }}>{fmt(liq)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
