@@ -178,14 +178,15 @@ export default function BoletimScreen() {
       const kmExtra   = adj.kmExtra  ?? kmExtraAuto;
 
       let valorFixo, tnValor, tnTotal, teValor, teTotal, kmExValor, kmExTotal, valorBruto;
-      let valorDiaria = 0, totalTurnos = tnQuant + teQuant;
+      let valorDiaria = 0, valorDiariaExtra = 0, totalTurnos = tnQuant + teQuant;
 
       if (regra?.tipo_cobranca === 'por_turnos') {
-        valorDiaria  = billing?.valor_diaria || 0;
-        valorFixo    = 0; tnValor = 0; tnTotal = 0;
-        teValor      = 0; teTotal = 0;
+        valorDiaria      = billing?.valor_diaria       || 0;
+        valorDiariaExtra = billing?.valor_diaria_extra || 0;
+        valorFixo    = 0; tnValor = valorDiaria; tnTotal = tnQuant * valorDiaria;
+        teValor      = valorDiariaExtra; teTotal = teQuant * valorDiariaExtra;
         kmExValor    = 0; kmExTotal = 0;
-        valorBruto   = valorDiaria * totalTurnos;
+        valorBruto   = tnTotal + teTotal;
       } else {
         valorFixo  = billing?.valor_mensal || 0;
         tnValor    = billing?.valor_turno_normal || 0;
@@ -205,7 +206,7 @@ export default function BoletimScreen() {
         rotaNome: rota?.nome || '—',
         configAtual,
         semConfig: !configAtual || !billing,
-        valorDiaria, totalTurnos,
+        valorDiaria, valorDiariaExtra, totalTurnos,
         valorFixo, tnValor, tnQuant, tnQuantAuto, tnTotal,
         teValor, teQuant, teQuantAuto, teTotal,
         kmExValor, kmExtra, kmExtraAuto, kmExTotal,
@@ -332,13 +333,17 @@ export default function BoletimScreen() {
           <div style={{ overflowX: 'auto', border: `1px solid ${G.greenBorder}`, borderTop: 0, borderRadius: '0 0 12px 12px', marginBottom: 18 }}>
             {porTurnos ? (
               /* ── TABELA POR TURNOS ── */
-              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 820 }}>
                 <thead>
                   <tr>
                     <th style={th0}>ROTA</th>
                     <th style={{ ...th0, minWidth: 160 }}>TIPO</th>
-                    <th style={th1}>VALOR DIÁRIA</th>
-                    <th style={th1}>QTD TURNOS</th>
+                    <th style={th1}>DIÁRIA NORMAL</th>
+                    <th style={th1}>TN QUANT</th>
+                    <th style={th1}>TN TOTAL</th>
+                    <th style={th0}>DIÁRIA EXTRA</th>
+                    <th style={th0}>TE QUANT</th>
+                    <th style={th0}>TE TOTAL</th>
                     <th style={th0}>VALOR BRUTO</th>
                     <th style={th0}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
@@ -366,17 +371,26 @@ export default function BoletimScreen() {
                         </select>
                       </td>
                       <td style={tdR}>{fmt(l.valorDiaria)}</td>
-                      <QuantCell value={l.tnQuant + l.teQuant} autoValue={l.totalTurnos}
-                        onChange={v => { setAjuste(l.rota_id, 'tnQuant', v); setAjuste(l.rota_id, 'teQuant', 0); }}
-                        onReset={() => { resetAjuste(l.rota_id, 'tnQuant'); resetAjuste(l.rota_id, 'teQuant'); }} />
+                      <QuantCell value={l.tnQuant} autoValue={l.tnQuantAuto}
+                        onChange={v => setAjuste(l.rota_id, 'tnQuant', v)}
+                        onReset={() => resetAjuste(l.rota_id, 'tnQuant')} />
+                      <td style={tdR}>{fmt(l.tnTotal)}</td>
+                      <td style={tdR}>{fmt(l.valorDiariaExtra)}</td>
+                      <QuantCell value={l.teQuant} autoValue={l.teQuantAuto}
+                        onChange={v => setAjuste(l.rota_id, 'teQuant', v)}
+                        onReset={() => resetAjuste(l.rota_id, 'teQuant')} />
+                      <td style={tdR}>{fmt(l.teTotal)}</td>
                       <td style={{ ...tdR, fontWeight: 700 }}>{fmt(l.valorBruto)}</td>
                       <td style={tdR}>{fmt(l.iss)}</td>
                       <td style={{ ...tdR, fontWeight: 700, color: '#166534' }}>{fmt(l.valorLiquido)}</td>
                     </tr>
                   ))}
                   <tr>
-                    <td style={tdTot} colSpan={3}>TOTAL GERAL</td>
-                    <td style={tdTotR}>{linhas.reduce((s, l) => s + l.totalTurnos, 0)}</td>
+                    <td style={tdTot} colSpan={2}>TOTAL GERAL</td>
+                    <td style={tdTotR}>{fmt(tot.tnTotal)}</td>
+                    <td style={tdTot}></td>
+                    <td style={tdTotR}>{tot.teQuant}</td>
+                    <td style={tdTotR}>{fmt(tot.teTotal)}</td>
                     <td style={tdTotR}>{fmt(tot.valorBruto)}</td>
                     <td style={tdTotR}>{fmt(tot.iss)}</td>
                     <td style={{ ...tdTotR, color: '#166534' }}>{fmt(tot.valorLiquido)}</td>

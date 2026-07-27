@@ -28,7 +28,7 @@ export default function RegrasScreen() {
   const [novaConfig, setNovaConfig] = useState({
     configuracao: '', valor_mensal: '', valor_turno_normal: '',
     valor_turno_extra: '', valor_km_extra_normal: '', valor_km_extra_turno_extra: '',
-    valor_diaria: '',
+    valor_diaria: '', valor_diaria_extra: '',
   });
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState('');
@@ -98,11 +98,12 @@ export default function RegrasScreen() {
       valor_km_extra_normal: Number(novaConfig.valor_km_extra_normal) || 0,
       valor_km_extra_turno_extra: Number(novaConfig.valor_km_extra_turno_extra) || 0,
       valor_diaria: Number(novaConfig.valor_diaria) || 0,
+      valor_diaria_extra: Number(novaConfig.valor_diaria_extra) || 0,
     });
     setNovaConfig({
       configuracao: '', valor_mensal: '', valor_turno_normal: '',
       valor_turno_extra: '', valor_km_extra_normal: '', valor_km_extra_turno_extra: '',
-      valor_diaria: '',
+      valor_diaria: '', valor_diaria_extra: '',
     });
     const { data: v } = await supabase.from('valores_veiculo').select('*').eq('regra_id', regra.id).order('configuracao');
     setValores(v || []);
@@ -242,7 +243,10 @@ export default function RegrasScreen() {
                       <tr>
                         <th style={gTh}>Configuração</th>
                         {tipoCob === 'por_turnos' ? (
-                          <th style={gTh}>Valor Diária (R$ / turno)</th>
+                          <>
+                            <th style={gTh}>Diária Normal (R$/turno)</th>
+                            <th style={gTh}>Diária Extra (R$/turno)</th>
+                          </>
                         ) : (
                           <>
                             <th style={gTh}>Valor mensal</th>
@@ -260,11 +264,18 @@ export default function RegrasScreen() {
                         <tr key={v.id}>
                           <td style={{ ...gTd, fontWeight: 700 }}>{v.configuracao}</td>
                           {tipoCob === 'por_turnos' ? (
-                            <td style={gTd}>
-                              <input type="number" min="0" step="0.01" defaultValue={v.valor_diaria ?? 0}
-                                onBlur={e => editarCampo(v.id, 'valor_diaria', e.target.value)}
-                                style={{ ...gInput, width: 160, padding: '4px 8px', fontSize: '0.82rem' }} />
-                            </td>
+                            <>
+                              <td style={gTd}>
+                                <input type="number" min="0" step="0.01" defaultValue={v.valor_diaria ?? 0}
+                                  onBlur={e => editarCampo(v.id, 'valor_diaria', e.target.value)}
+                                  style={{ ...gInput, width: 140, padding: '4px 8px', fontSize: '0.82rem' }} />
+                              </td>
+                              <td style={gTd}>
+                                <input type="number" min="0" step="0.01" defaultValue={v.valor_diaria_extra ?? 0}
+                                  onBlur={e => editarCampo(v.id, 'valor_diaria_extra', e.target.value)}
+                                  style={{ ...gInput, width: 140, padding: '4px 8px', fontSize: '0.82rem' }} />
+                              </td>
+                            </>
                           ) : (
                             ['valor_mensal', 'valor_turno_normal', 'valor_turno_extra', 'valor_km_extra_normal', 'valor_km_extra_turno_extra'].map(campo => (
                               <td key={campo} style={gTd}>
@@ -297,12 +308,20 @@ export default function RegrasScreen() {
                   </div>
 
                   {tipoCob === 'por_turnos' ? (
-                    <div>
-                      <label style={gLabel}>Valor Diária (R$/turno)</label>
-                      <input required type="number" min="0" step="0.01" value={novaConfig.valor_diaria}
-                        onChange={e => setNovaConfig(n => ({ ...n, valor_diaria: e.target.value }))}
-                        style={{ ...gInput, width: 180 }} placeholder="0,00" />
-                    </div>
+                    <>
+                      <div>
+                        <label style={gLabel}>Diária Normal (R$/turno)</label>
+                        <input required type="number" min="0" step="0.01" value={novaConfig.valor_diaria}
+                          onChange={e => setNovaConfig(n => ({ ...n, valor_diaria: e.target.value }))}
+                          style={{ ...gInput, width: 160 }} placeholder="0,00" />
+                      </div>
+                      <div>
+                        <label style={gLabel}>Diária Extra (R$/turno)</label>
+                        <input required type="number" min="0" step="0.01" value={novaConfig.valor_diaria_extra}
+                          onChange={e => setNovaConfig(n => ({ ...n, valor_diaria_extra: e.target.value }))}
+                          style={{ ...gInput, width: 160 }} placeholder="0,00" />
+                      </div>
+                    </>
                   ) : (
                     [
                       ['valor_mensal', 'Mensal (R$)'],
