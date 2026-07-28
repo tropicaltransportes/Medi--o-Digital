@@ -70,6 +70,8 @@ export default function BoletimScreen() {
   const [issPercent, setIssPercent] = useState(5);
   const [boletim, setBoletim] = useState(null);
   const [fechando, setFechando] = useState(false);
+  const [historico, setHistorico] = useState([]);
+  const [historicoAberto, setHistoricoAberto] = useState(false);
 
   const mesesDisponiveis = useMemo(() => {
     const lista = [];
@@ -85,6 +87,15 @@ export default function BoletimScreen() {
     supabase.from('contratos').select('id, nome').order('nome')
       .then(({ data }) => setContratos(data || []));
   }, []);
+
+  useEffect(() => {
+    if (!contratoId) { setHistorico([]); return; }
+    supabase.from('boletins')
+      .select('id, mes, status, iss_percent, fechado_por, fechado_em, snapshot')
+      .eq('contrato_id', Number(contratoId))
+      .order('mes', { ascending: false })
+      .then(({ data }) => setHistorico(data || []));
+  }, [contratoId]);
 
   useEffect(() => {
     if (!contratoId || !mes) return;
@@ -173,6 +184,14 @@ export default function BoletimScreen() {
     return () => clearTimeout(autoSaveTimer.current);
   }, [issPercent, ajustes]);
 
+  async function recarregarHistorico() {
+    const { data } = await supabase.from('boletins')
+      .select('id, mes, status, iss_percent, fechado_por, fechado_em, snapshot')
+      .eq('contrato_id', Number(contratoId))
+      .order('mes', { ascending: false });
+    setHistorico(data || []);
+  }
+
   async function fecharBoletim() {
     if (!window.confirm('Fechar o boletim? Os valores ficarão travados e não poderão ser alterados.')) return;
     setFechando(true);
@@ -182,11 +201,12 @@ export default function BoletimScreen() {
       status: 'fechado',
       iss_percent: issPercent,
       ajustes,
-      snapshot: { linhas, tot, issPercent, porTurnos },
+      snapshot: { linhas, tot, issPercent, porTurnos, regra: { tipo_cobranca: regra?.tipo_cobranca, dias_mes: regra?.dias_mes, km_franquia_mensal: regra?.km_franquia_mensal } },
       fechado_por: usuario?.nome || 'Gestor',
       fechado_em: new Date().toISOString(),
     }, { onConflict: 'contrato_id,mes' });
     await carregar();
+    await recarregarHistorico();
     setFechando(false);
   }
 
@@ -196,6 +216,7 @@ export default function BoletimScreen() {
       status: 'rascunho', snapshot: null, fechado_por: null, fechado_em: null,
     }).eq('contrato_id', Number(contratoId)).eq('mes', mes);
     await carregar();
+    await recarregarHistorico();
   }
 
   const linhas = useMemo(() => {
@@ -390,6 +411,75 @@ export default function BoletimScreen() {
           </div>
         )}
       </div>
+
+      {/* Painel histórico */}
+      {contratoId && historico.length > 0 && (
+        <div style={{ ...gCard, marginTop: 12, padding: '12px 16px' }}>
+          <button
+            onClick={() => setHistoricoAberto(o => !o)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: 0, width: '100%' }}
+          >
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: G.text }}>
+              {historicoAberto ? '▾' : '▸'} Histórico de boletins — {historico.length} {historico.length === 1 ? 'mês' : 'meses'}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: G.muted, marginLeft: 'auto' }}>
+              {historico.filter(b => b.status === 'fechado').length} fechados
+            </span>
+          </button>
+
+          {historicoAberto && (
+            <div style={{ overflowX: 'auto', marginTop: 12 }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr>
+                    {['MÊS', 'STATUS', 'VALOR BRUTO', 'VALOR LÍQUIDO', 'VARIAÇÃO', 'FECHADO POR', ''].map(h => (
+                      <th key={h} style={{ padding: '5px 10px', textAlign: h === 'VALOR BRUTO' || h === 'VALOR LÍQUIDO' || h === 'VARIAÇÃO' ? 'right' : 'left', background: G.surfaceAlt, color: G.muted, fontWeight: 600, borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {historico.map((b, i) => {
+                    const snap = b.snapshot;
+                    const vBruto = snap?.tot?.valorBruto ?? 0;
+                    const vLiq   = snap?.tot?.valorLiquido ?? 0;
+                    const prev   = historico[i + 1];
+                    const prevBruto = prev?.snapshot?.tot?.valorBruto ?? null;
+                    const variacao  = prevBruto != null && prevBruto > 0 ? ((vBruto - prevBruto) / prevBruto) * 100 : null;
+                    const varColor  = variacao == null ? G.muted : Math.abs(variacao) > 30 ? '#dc2626' : Math.abs(variacao) > 10 ? '#d97706' : '#16a34a';
+                    const isCurrent = b.mes === mes;
+                    return (
+                      <tr key={b.id} style={{ background: isCurrent ? G.accentSoft : i % 2 === 0 ? 'transparent' : G.surfaceAlt }}>
+                        <td style={{ padding: '6px 10px', fontWeight: isCurrent ? 700 : 400, color: G.text, whiteSpace: 'nowrap' }}>{formatarMes(b.mes)}</td>
+                        <td style={{ padding: '6px 10px' }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: b.status === 'fechado' ? '#dcfce7' : '#fef9c3', color: b.status === 'fechado' ? '#166534' : '#713f12' }}>
+                            {b.status === 'fechado' ? '🔒 Fechado' : '✏ Rascunho'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '6px 10px', textAlign: 'right', color: G.text }}>{vBruto > 0 ? fmt(vBruto) : '—'}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: '#166534' }}>{vLiq > 0 ? fmt(vLiq) : '—'}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: varColor }}>
+                          {variacao == null ? '—' : `${variacao > 0 ? '+' : ''}${variacao.toFixed(1)}%`}
+                        </td>
+                        <td style={{ padding: '6px 10px', color: G.muted, whiteSpace: 'nowrap' }}>
+                          {b.fechado_por ? `${b.fechado_por} · ${new Date(b.fechado_em).toLocaleDateString('pt-BR')}` : '—'}
+                        </td>
+                        <td style={{ padding: '6px 10px' }}>
+                          <button
+                            onClick={() => setMes(b.mes)}
+                            style={{ fontSize: '0.75rem', padding: '3px 10px', border: `1px solid ${G.border}`, borderRadius: 6, background: isCurrent ? G.accent : G.surface, color: isCurrent ? '#fff' : G.text, cursor: 'pointer', fontWeight: isCurrent ? 700 : 400 }}
+                          >
+                            {isCurrent ? 'Atual' : 'Ver'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {carregando && <p style={{ color: G.muted, fontSize: '0.875rem', padding: 24 }}>Carregando...</p>}
 
