@@ -293,6 +293,23 @@ export default function BoletimScreen() {
   const issRotas    = brutoRotas  * (issD / 100);
   const issExtras   = brutoExtras * (issD / 100);
 
+  // Checagens de integridade
+  const alertasSemConfig  = linhas.filter(l => l.semConfig).map(l => l.rotaNome);
+  const alertasValorZero  = linhas.filter(l => {
+    if (!l.semConfig) {
+      if (porTurnos && (l.valorDiaria === 0 || l.valorDiariaExtra === 0)) return true;
+      if (!porTurnos && l.valorFixo === 0 && l.tnValor === 0) return true;
+    }
+    return false;
+  }).map(l => l.rotaNome);
+  const temBloqueio = alertasSemConfig.length > 0;
+  const temAviso    = alertasValorZero.length > 0;
+
+  function handleGerarPDF() {
+    if (temBloqueio) return; // botão desabilitado, mas garante
+    exportPDF(boletimRef.current, `boletim-${contratoNome.toLowerCase().replace(/\s+/g, '-')}-${mes}.pdf`, false);
+  }
+
   function fecharDD() { setTimeout(() => setDdAberto(''), 150); }
 
   return (
@@ -376,6 +393,30 @@ export default function BoletimScreen() {
 
       {carregando && <p style={{ color: G.muted, fontSize: '0.875rem', padding: 24 }}>Carregando...</p>}
 
+      {/* Painel de alertas */}
+      {!carregando && linhas.length > 0 && (temBloqueio || temAviso || !boletimFechado) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+          {alertasSemConfig.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', fontSize: '0.83rem', color: '#991b1b' }}>
+              <span>🚫</span>
+              <span><strong>PDF bloqueado</strong> — {alertasSemConfig.length === 1 ? 'A rota' : 'As rotas'} <strong>{alertasSemConfig.join(', ')}</strong> não {alertasSemConfig.length === 1 ? 'tem' : 'têm'} tipo de veículo definido. O valor seria R$ 0,00.</span>
+            </div>
+          )}
+          {alertasValorZero.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', fontSize: '0.83rem', color: '#92400e' }}>
+              <span>⚠️</span>
+              <span><strong>Valores zerados</strong> — {alertasValorZero.length === 1 ? 'A rota' : 'As rotas'} <strong>{alertasValorZero.join(', ')}</strong> {alertasValorZero.length === 1 ? 'tem' : 'têm'} valor de faturamento R$ 0,00. Verifique as regras em Cadastros.</span>
+            </div>
+          )}
+          {!boletimFechado && !temBloqueio && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '10px 14px', fontSize: '0.83rem', color: '#1e40af' }}>
+              <span>ℹ️</span>
+              <span>Boletim em <strong>rascunho</strong>. Feche o boletim antes de gerar o PDF para garantir que os valores não sejam alterados depois.</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {!carregando && contratoId && mes && linhas.length === 0 && (
         <div style={{ ...gCard, textAlign: 'center', color: G.muted, padding: '48px 24px', marginTop: 16 }}>
           Nenhum registro validado encontrado para este contrato e mês.
@@ -408,7 +449,15 @@ export default function BoletimScreen() {
             <span>BOLETIM DE MEDIÇÃO — CONTRATO {contratoNome.toUpperCase()}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontWeight: 400, opacity: 0.85 }}>{formatarMes(mes).toUpperCase()}</span>
-              <button data-pdf-hide style={{ ...btnPDF, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => exportPDF(boletimRef.current, `boletim-${mes}.pdf`, false)}>⬇ PDF</button>
+              <button
+                data-pdf-hide
+                disabled={temBloqueio}
+                title={temBloqueio ? 'Corrija as rotas sem tipo de veículo antes de gerar o PDF' : !boletimFechado ? 'Recomendado fechar o boletim antes de gerar o PDF' : ''}
+                style={{ ...btnPDF, background: temBloqueio ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', opacity: temBloqueio ? 0.45 : 1, cursor: temBloqueio ? 'not-allowed' : 'pointer' }}
+                onClick={handleGerarPDF}
+              >
+                {!boletimFechado && !temBloqueio ? '⚠ PDF' : '⬇ PDF'}
+              </button>
             </div>
           </div>
 
@@ -629,11 +678,6 @@ export default function BoletimScreen() {
             />
           </div>
 
-          {!boletimFechado && linhasD.some(l => l.semConfig) && (
-            <p style={{ color: G.red, marginTop: 12, fontSize: '0.85rem', fontWeight: 600 }}>
-              ⚠ Algumas rotas não têm tipo de veículo definido. Selecione o tipo na coluna TIPO acima.
-            </p>
-          )}
         </>
         </div>
       )}
