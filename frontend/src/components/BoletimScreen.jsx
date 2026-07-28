@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
-import { kmRodados, formatarMes } from '../storage.js';
+import { kmRodados, formatarMes, carregarSessao } from '../storage.js';
 import { exportPDF, btnPDF } from '../utils/pdf.js';
 import { useG, getStyles, Selo, RotaMotif, PillDD } from '../gestorUI.jsx';
 
@@ -53,6 +53,8 @@ export default function BoletimScreen() {
   const G = useG();
   const { gCard, gLabel, gInput, gBtnSec } = getStyles(G);
   const boletimRef = useRef(null);
+  const autoSaveTimer = useRef(null);
+  const usuario = carregarSessao();
   const [contratos, setContratos] = useState([]);
   const [contratoId, setContratoId] = useState('');
   const [mes, setMes] = useState('');
@@ -64,10 +66,10 @@ export default function BoletimScreen() {
   const [carregando, setCarregando] = useState(false);
   const [configRotas, setConfigRotas] = useState({});
   const [salvandoConfig, setSalvandoConfig] = useState({});
-  // Ajustes manuais de quantidade por rota
   const [ajustes, setAjustes] = useState({});
-  // ISS editável (%)
   const [issPercent, setIssPercent] = useState(5);
+  const [boletim, setBoletim] = useState(null);
+  const [fechando, setFechando] = useState(false);
 
   const mesesDisponiveis = useMemo(() => {
     const lista = [];
@@ -91,12 +93,13 @@ export default function BoletimScreen() {
 
   async function carregar() {
     setCarregando(true);
-    setAjustes({});   // limpa overrides ao recarregar
+    setAjustes({});
     const cid = Number(contratoId);
 
-    const [{ data: rotasData }, { data: regraData }] = await Promise.all([
+    const [{ data: rotasData }, { data: regraData }, { data: boletimData }] = await Promise.all([
       supabase.from('rotas').select('id, nome, configuracao').eq('contrato_id', cid),
       supabase.from('regras_contrato').select('*, valores_veiculo(*)').eq('contrato_id', cid).maybeSingle(),
+      supabase.from('boletins').select('*').eq('contrato_id', cid).eq('mes', mes).maybeSingle(),
     ]);
 
     const rotaIds = (rotasData || []).map(r => r.id);
@@ -121,6 +124,15 @@ export default function BoletimScreen() {
     setRegistros(regsData);
     setRegra(regraData);
     setValoresVeiculo(regraData?.valores_veiculo || []);
+    setBoletim(boletimData);
+    if (boletimData) {
+      setIssPercent(boletimData.iss_percent ?? 5);
+      if (boletimData.ajustes && Object.keys(boletimData.ajustes).length > 0) {
+        setAjustes(boletimData.ajustes);
+      }
+    } else {
+      setIssPercent(5);
+    }
     setCarregando(false);
   }
 
@@ -147,6 +159,43 @@ export default function BoletimScreen() {
       delete novo[campo];
       return { ...prev, [rotaId]: novo };
     });
+  }
+
+  useEffect(() => {
+    if (boletim?.status === 'fechado' || !contratoId || !mes) return;
+    clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(async () => {
+      await supabase.from('boletins').upsert(
+        { contrato_id: Number(contratoId), mes, status: 'rascunho', iss_percent: issPercent, ajustes },
+        { onConflict: 'contrato_id,mes' }
+      );
+    }, 800);
+    return () => clearTimeout(autoSaveTimer.current);
+  }, [issPercent, ajustes]);
+
+  async function fecharBoletim() {
+    if (!window.confirm('Fechar o boletim? Os valores ficarão travados e não poderão ser alterados.')) return;
+    setFechando(true);
+    await supabase.from('boletins').upsert({
+      contrato_id: Number(contratoId),
+      mes,
+      status: 'fechado',
+      iss_percent: issPercent,
+      ajustes,
+      snapshot: { linhas, tot, issPercent, porTurnos },
+      fechado_por: usuario?.nome || 'Gestor',
+      fechado_em: new Date().toISOString(),
+    }, { onConflict: 'contrato_id,mes' });
+    await carregar();
+    setFechando(false);
+  }
+
+  async function reabrirBoletim() {
+    if (!window.confirm('Reabrir o boletim? Os valores poderão ser editados novamente.')) return;
+    await supabase.from('boletins').update({
+      status: 'rascunho', snapshot: null, fechado_por: null, fechado_em: null,
+    }).eq('contrato_id', Number(contratoId)).eq('mes', mes);
+    await carregar();
   }
 
   const linhas = useMemo(() => {
@@ -228,13 +277,21 @@ export default function BoletimScreen() {
     valorLiquido: acc.valorLiquido + l.valorLiquido,
   }), { valorFixo:0,tnQuant:0,tnTotal:0,teQuant:0,teTotal:0,kmExtra:0,kmExTotal:0,valorBruto:0,iss:0,valorLiquido:0 }), [linhas]);
 
-  const brutoRotas   = linhas.reduce((a, l) => a + l.valorFixo, 0);
-  const brutoExtras  = linhas.reduce((a, l) => a + l.tnTotal + l.teTotal + l.kmExTotal, 0);
-  const issRotas     = brutoRotas  * (issPercent / 100);
-  const issExtras    = brutoExtras * (issPercent / 100);
-  const contratoNome = contratos.find(c => c.id === Number(contratoId))?.nome || '';
-  const temAjustes   = Object.keys(ajustes).some(k => Object.keys(ajustes[k]).length > 0);
-  const porTurnos    = regra?.tipo_cobranca === 'por_turnos';
+  const contratoNome  = contratos.find(c => c.id === Number(contratoId))?.nome || '';
+  const temAjustes    = Object.keys(ajustes).some(k => Object.keys(ajustes[k]).length > 0);
+  const porTurnos     = regra?.tipo_cobranca === 'por_turnos';
+  const boletimFechado = boletim?.status === 'fechado';
+
+  // Quando fechado, usa snapshot; quando rascunho, usa valores computados ao vivo
+  const linhasD    = boletimFechado ? (boletim.snapshot?.linhas || linhas) : linhas;
+  const totD       = boletimFechado ? (boletim.snapshot?.tot    || tot)    : tot;
+  const issD       = boletimFechado ? (boletim.iss_percent      ?? issPercent) : issPercent;
+  const porTurnosD = boletimFechado ? (boletim.snapshot?.porTurnos ?? porTurnos) : porTurnos;
+
+  const brutoRotas  = linhasD.reduce((a, l) => a + (l.valorFixo || 0), 0);
+  const brutoExtras = linhasD.reduce((a, l) => a + (l.tnTotal || 0) + (l.teTotal || 0) + (l.kmExTotal || 0), 0);
+  const issRotas    = brutoRotas  * (issD / 100);
+  const issExtras   = brutoExtras * (issD / 100);
 
   function fecharDD() { setTimeout(() => setDdAberto(''), 150); }
 
@@ -279,7 +336,7 @@ export default function BoletimScreen() {
             minWidth={160}
           />
         </div>
-        {contratoId && mes && (
+        {contratoId && mes && !boletimFechado && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <label style={gLabel}>ISS %</label>
             <input type="number" min="0" max="100" step="0.5" value={issPercent}
@@ -288,15 +345,29 @@ export default function BoletimScreen() {
           </div>
         )}
         {contratoId && mes && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button style={gBtnSec} onClick={carregar}>↻ Atualizar</button>
-            {temAjustes && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {!boletimFechado && <button style={gBtnSec} onClick={carregar}>↻ Atualizar</button>}
+            {!boletimFechado && temAjustes && (
               <button
                 style={{ ...gBtnSec, color: 'oklch(0.55 0.12 80)', borderColor: 'oklch(0.82 0.12 80)', fontSize: '0.78rem' }}
                 onClick={() => setAjustes({})}
-                title="Restaurar todas as quantidades para os valores automáticos"
               >
                 ↺ Restaurar automático
+              </button>
+            )}
+            {!boletimFechado && linhasD.length > 0 && (
+              <button
+                style={{ ...gBtnSec, background: G.green, color: '#fff', borderColor: G.green, fontWeight: 700, opacity: fechando ? 0.7 : 1 }}
+                onClick={fecharBoletim}
+                disabled={fechando || linhasD.some(l => l.semConfig)}
+                title={linhasD.some(l => l.semConfig) ? 'Corrija as rotas sem tipo de veículo antes de fechar' : 'Fechar e travar o boletim'}
+              >
+                {fechando ? 'Fechando...' : '🔒 Fechar Boletim'}
+              </button>
+            )}
+            {boletimFechado && (
+              <button style={{ ...gBtnSec, fontSize: '0.78rem' }} onClick={reabrirBoletim}>
+                🔓 Reabrir
               </button>
             )}
           </div>
@@ -317,9 +388,21 @@ export default function BoletimScreen() {
         </div>
       )}
 
-      {!carregando && linhas.length > 0 && (
+      {!carregando && linhasD.length > 0 && (
         <div ref={boletimRef}>
         <>
+          {/* Banner de status */}
+          {boletimFechado && (
+            <div data-pdf-hide style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 16px', marginTop: 16, fontSize: '0.85rem', color: '#166534' }}>
+              <span style={{ fontSize: '1rem' }}>🔒</span>
+              <span>
+                <strong>Boletim fechado</strong> por {boletim.fechado_por} em{' '}
+                {new Date(boletim.fechado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                {' '}· ISS {issD}%
+              </span>
+            </div>
+          )}
+
           {/* Cabeçalho */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: G.green, color: '#fff', borderRadius: '12px 12px 0 0', padding: '11px 16px', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.02em', marginTop: 18 }}>
             <span>BOLETIM DE MEDIÇÃO — CONTRATO {contratoNome.toUpperCase()}</span>
@@ -331,7 +414,7 @@ export default function BoletimScreen() {
 
           {/* Tabela principal */}
           <div style={{ overflowX: 'auto', border: `1px solid ${G.greenBorder}`, borderTop: 0, borderRadius: '0 0 12px 12px', marginBottom: 18 }}>
-            {porTurnos ? (
+            {porTurnosD ? (
               /* ── TABELA POR TURNOS ── */
               <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 820 }}>
                 <thead>
@@ -346,39 +429,49 @@ export default function BoletimScreen() {
                     <th style={th0}>TE TOTAL</th>
                     <th style={th0}>VALOR BRUTO</th>
                     <th style={th0}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                        ISS
-                        <input type="number" value={issPercent}
-                          onChange={e => setIssPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                          min={0} max={100} step={0.5}
-                          style={{ width: 38, textAlign: 'center', fontSize: '0.72rem', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3, padding: '1px 2px', background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 700 }} />
-                        %
-                      </div>
+                      {boletimFechado ? `ISS ${issD}%` : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                          ISS
+                          <input type="number" value={issPercent}
+                            onChange={e => setIssPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                            min={0} max={100} step={0.5}
+                            style={{ width: 38, textAlign: 'center', fontSize: '0.72rem', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3, padding: '1px 2px', background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 700 }} />
+                          %
+                        </div>
+                      )}
                     </th>
                     <th style={th0}>VALOR LÍQUIDO</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {linhas.map((l, i) => (
+                  {linhasD.map((l, i) => (
                     <tr key={l.rota_id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
                       <td style={td0}>{l.rotaNome}</td>
                       <td style={{ ...td0, padding: '3px 6px' }}>
-                        <select value={l.configAtual} onChange={e => handleConfigChange(l.rota_id, e.target.value)}
-                          disabled={salvandoConfig[l.rota_id]}
-                          style={{ width: '100%', fontSize: '0.78rem', padding: '3px 6px', border: l.semConfig ? '1px solid #fca5a5' : '1px solid #d1d5db', borderRadius: 4, background: l.semConfig ? '#fef2f2' : '#fff', color: l.semConfig ? '#dc2626' : '#111827', fontWeight: 600, cursor: 'pointer' }}>
-                          <option value="">— Selecione —</option>
-                          {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        {boletimFechado ? (
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>{l.configAtual || '—'}</span>
+                        ) : (
+                          <select value={l.configAtual} onChange={e => handleConfigChange(l.rota_id, e.target.value)}
+                            disabled={salvandoConfig[l.rota_id]}
+                            style={{ width: '100%', fontSize: '0.78rem', padding: '3px 6px', border: l.semConfig ? '1px solid #fca5a5' : '1px solid #d1d5db', borderRadius: 4, background: l.semConfig ? '#fef2f2' : '#fff', color: l.semConfig ? '#dc2626' : '#111827', fontWeight: 600, cursor: 'pointer' }}>
+                            <option value="">— Selecione —</option>
+                            {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        )}
                       </td>
                       <td style={tdR}>{fmt(l.valorDiaria)}</td>
-                      <QuantCell value={l.tnQuant} autoValue={l.tnQuantAuto}
-                        onChange={v => setAjuste(l.rota_id, 'tnQuant', v)}
-                        onReset={() => resetAjuste(l.rota_id, 'tnQuant')} />
+                      {boletimFechado ? <td style={tdR}>{l.tnQuant}</td> : (
+                        <QuantCell value={l.tnQuant} autoValue={l.tnQuantAuto}
+                          onChange={v => setAjuste(l.rota_id, 'tnQuant', v)}
+                          onReset={() => resetAjuste(l.rota_id, 'tnQuant')} />
+                      )}
                       <td style={tdR}>{fmt(l.tnTotal)}</td>
                       <td style={tdR}>{fmt(l.valorDiariaExtra)}</td>
-                      <QuantCell value={l.teQuant} autoValue={l.teQuantAuto}
-                        onChange={v => setAjuste(l.rota_id, 'teQuant', v)}
-                        onReset={() => resetAjuste(l.rota_id, 'teQuant')} />
+                      {boletimFechado ? <td style={tdR}>{l.teQuant}</td> : (
+                        <QuantCell value={l.teQuant} autoValue={l.teQuantAuto}
+                          onChange={v => setAjuste(l.rota_id, 'teQuant', v)}
+                          onReset={() => resetAjuste(l.rota_id, 'teQuant')} />
+                      )}
                       <td style={tdR}>{fmt(l.teTotal)}</td>
                       <td style={{ ...tdR, fontWeight: 700 }}>{fmt(l.valorBruto)}</td>
                       <td style={tdR}>{fmt(l.iss)}</td>
@@ -387,13 +480,13 @@ export default function BoletimScreen() {
                   ))}
                   <tr>
                     <td style={tdTot} colSpan={2}>TOTAL GERAL</td>
-                    <td style={tdTotR}>{fmt(tot.tnTotal)}</td>
+                    <td style={tdTotR}>{fmt(totD.tnTotal)}</td>
                     <td style={tdTot}></td>
-                    <td style={tdTotR}>{tot.teQuant}</td>
-                    <td style={tdTotR}>{fmt(tot.teTotal)}</td>
-                    <td style={tdTotR}>{fmt(tot.valorBruto)}</td>
-                    <td style={tdTotR}>{fmt(tot.iss)}</td>
-                    <td style={{ ...tdTotR, color: '#166534' }}>{fmt(tot.valorLiquido)}</td>
+                    <td style={tdTotR}>{totD.teQuant}</td>
+                    <td style={tdTotR}>{fmt(totD.teTotal)}</td>
+                    <td style={tdTotR}>{fmt(totD.valorBruto)}</td>
+                    <td style={tdTotR}>{fmt(totD.iss)}</td>
+                    <td style={{ ...tdTotR, color: '#166534' }}>{fmt(totD.valorLiquido)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -410,14 +503,16 @@ export default function BoletimScreen() {
                     <th style={{ ...th1, textAlign: 'center' }} colSpan={3}>KM EXTRA T. EXTRA</th>
                     <th style={th0} rowSpan={2}>VALOR BRUTO</th>
                     <th style={th0} rowSpan={2}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                        ISS
-                        <input type="number" value={issPercent}
-                          onChange={e => setIssPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                          min={0} max={100} step={0.5}
-                          style={{ width: 38, textAlign: 'center', fontSize: '0.72rem', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3, padding: '1px 2px', background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 700 }} />
-                        %
-                      </div>
+                      {boletimFechado ? `ISS ${issD}%` : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                          ISS
+                          <input type="number" value={issPercent}
+                            onChange={e => setIssPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                            min={0} max={100} step={0.5}
+                            style={{ width: 38, textAlign: 'center', fontSize: '0.72rem', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3, padding: '1px 2px', background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 700 }} />
+                          %
+                        </div>
+                      )}
                     </th>
                     <th style={th0} rowSpan={2}>VALOR LÍQUIDO</th>
                   </tr>
@@ -428,32 +523,42 @@ export default function BoletimScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {linhas.map((l, i) => (
+                  {linhasD.map((l, i) => (
                     <tr key={l.rota_id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
                       <td style={td0}>{l.rotaNome}</td>
                       <td style={{ ...td0, padding: '3px 6px' }}>
-                        <select value={l.configAtual} onChange={e => handleConfigChange(l.rota_id, e.target.value)}
-                          disabled={salvandoConfig[l.rota_id]}
-                          style={{ width: '100%', fontSize: '0.78rem', padding: '3px 6px', border: l.semConfig ? '1px solid #fca5a5' : '1px solid #d1d5db', borderRadius: 4, background: l.semConfig ? '#fef2f2' : '#fff', color: l.semConfig ? '#dc2626' : '#111827', fontWeight: 600, cursor: 'pointer' }}>
-                          <option value="">— Selecione —</option>
-                          {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        {boletimFechado ? (
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>{l.configAtual || '—'}</span>
+                        ) : (
+                          <select value={l.configAtual} onChange={e => handleConfigChange(l.rota_id, e.target.value)}
+                            disabled={salvandoConfig[l.rota_id]}
+                            style={{ width: '100%', fontSize: '0.78rem', padding: '3px 6px', border: l.semConfig ? '1px solid #fca5a5' : '1px solid #d1d5db', borderRadius: 4, background: l.semConfig ? '#fef2f2' : '#fff', color: l.semConfig ? '#dc2626' : '#111827', fontWeight: 600, cursor: 'pointer' }}>
+                            <option value="">— Selecione —</option>
+                            {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        )}
                       </td>
                       <td style={tdR}>{fmt(l.valorFixo)}</td>
                       <td style={tdR}>{fmt(l.tnValor)}</td>
-                      <QuantCell value={l.tnQuant} autoValue={l.tnQuantAuto}
-                        onChange={v => setAjuste(l.rota_id, 'tnQuant', v)}
-                        onReset={() => resetAjuste(l.rota_id, 'tnQuant')} />
+                      {boletimFechado ? <td style={tdR}>{l.tnQuant}</td> : (
+                        <QuantCell value={l.tnQuant} autoValue={l.tnQuantAuto}
+                          onChange={v => setAjuste(l.rota_id, 'tnQuant', v)}
+                          onReset={() => resetAjuste(l.rota_id, 'tnQuant')} />
+                      )}
                       <td style={tdR}>{fmt(l.tnTotal)}</td>
                       <td style={tdR}>{fmt(l.teValor)}</td>
-                      <QuantCell value={l.teQuant} autoValue={l.teQuantAuto}
-                        onChange={v => setAjuste(l.rota_id, 'teQuant', v)}
-                        onReset={() => resetAjuste(l.rota_id, 'teQuant')} />
+                      {boletimFechado ? <td style={tdR}>{l.teQuant}</td> : (
+                        <QuantCell value={l.teQuant} autoValue={l.teQuantAuto}
+                          onChange={v => setAjuste(l.rota_id, 'teQuant', v)}
+                          onReset={() => resetAjuste(l.rota_id, 'teQuant')} />
+                      )}
                       <td style={tdR}>{fmt(l.teTotal)}</td>
                       <td style={tdR}>{fmt(l.kmExValor)}</td>
-                      <QuantCell value={l.kmExtra} autoValue={l.kmExtraAuto}
-                        onChange={v => setAjuste(l.rota_id, 'kmExtra', v)}
-                        onReset={() => resetAjuste(l.rota_id, 'kmExtra')} />
+                      {boletimFechado ? <td style={tdR}>{l.kmExtra}</td> : (
+                        <QuantCell value={l.kmExtra} autoValue={l.kmExtraAuto}
+                          onChange={v => setAjuste(l.rota_id, 'kmExtra', v)}
+                          onReset={() => resetAjuste(l.rota_id, 'kmExtra')} />
+                      )}
                       <td style={tdR}>{fmt(l.kmExTotal)}</td>
                       <td style={{ ...tdR, fontWeight: 700 }}>{fmt(l.valorBruto)}</td>
                       <td style={tdR}>{fmt(l.iss)}</td>
@@ -462,19 +567,19 @@ export default function BoletimScreen() {
                   ))}
                   <tr>
                     <td style={tdTot} colSpan={2}>TOTAL GERAL</td>
-                    <td style={tdTotR}>{fmt(tot.valorFixo)}</td>
+                    <td style={tdTotR}>{fmt(totD.valorFixo)}</td>
                     <td style={tdTot}></td>
-                    <td style={tdTotR}>{tot.tnQuant}</td>
-                    <td style={tdTotR}>{fmt(tot.tnTotal)}</td>
+                    <td style={tdTotR}>{totD.tnQuant}</td>
+                    <td style={tdTotR}>{fmt(totD.tnTotal)}</td>
                     <td style={tdTot}></td>
-                    <td style={tdTotR}>{tot.teQuant}</td>
-                    <td style={tdTotR}>{fmt(tot.teTotal)}</td>
+                    <td style={tdTotR}>{totD.teQuant}</td>
+                    <td style={tdTotR}>{fmt(totD.teTotal)}</td>
                     <td style={tdTot}></td>
-                    <td style={tdTotR}>{tot.kmExtra}</td>
-                    <td style={tdTotR}>{fmt(tot.kmExTotal)}</td>
-                    <td style={tdTotR}>{fmt(tot.valorBruto)}</td>
-                    <td style={tdTotR}>{fmt(tot.iss)}</td>
-                    <td style={{ ...tdTotR, color: '#166534' }}>{fmt(tot.valorLiquido)}</td>
+                    <td style={tdTotR}>{totD.kmExtra}</td>
+                    <td style={tdTotR}>{fmt(totD.kmExTotal)}</td>
+                    <td style={tdTotR}>{fmt(totD.valorBruto)}</td>
+                    <td style={tdTotR}>{fmt(totD.iss)}</td>
+                    <td style={{ ...tdTotR, color: '#166534' }}>{fmt(totD.valorLiquido)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -493,12 +598,12 @@ export default function BoletimScreen() {
                 </tr>
               </thead>
               <tbody>
-                {(porTurnos ? [
-                  ['TOTAL', tot.valorBruto, tot.iss, tot.valorLiquido],
+                {(porTurnosD ? [
+                  ['TOTAL', totD.valorBruto, totD.iss, totD.valorLiquido],
                 ] : [
-                  ['ROTAS (fixo)',          brutoRotas,    issRotas,   brutoRotas  - issRotas],
-                  ['EXTRAS (turnos + km)',  brutoExtras,   issExtras,  brutoExtras - issExtras],
-                  ['TOTAL',                tot.valorBruto, tot.iss,   tot.valorLiquido],
+                  ['ROTAS (fixo)',          brutoRotas,     issRotas,   brutoRotas  - issRotas],
+                  ['EXTRAS (turnos + km)',  brutoExtras,    issExtras,  brutoExtras - issExtras],
+                  ['TOTAL',                totD.valorBruto, totD.iss,  totD.valorLiquido],
                 ]).map(([label, bruto, iss, liq], i, arr) => {
                   const isLast = i === arr.length - 1;
                   return (
@@ -517,14 +622,14 @@ export default function BoletimScreen() {
           {/* Barra bruto → líquido */}
           <div style={{ ...gCard, marginTop: 0 }}>
             <RotaMotif
-              pct={tot.valorBruto > 0 ? (tot.valorLiquido / tot.valorBruto) * 100 : 0}
+              pct={totD.valorBruto > 0 ? (totD.valorLiquido / totD.valorBruto) * 100 : 0}
               color={G.green}
-              labelLeft={`Bruto → Líquido (ISS ${issPercent}%)`}
-              labelRight={`${Number(tot.valorLiquido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de ${Number(tot.valorBruto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+              labelLeft={`Bruto → Líquido (ISS ${issD}%)`}
+              labelRight={`${Number(totD.valorLiquido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de ${Number(totD.valorBruto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
             />
           </div>
 
-          {linhas.some(l => l.semConfig) && (
+          {!boletimFechado && linhasD.some(l => l.semConfig) && (
             <p style={{ color: G.red, marginTop: 12, fontSize: '0.85rem', fontWeight: 600 }}>
               ⚠ Algumas rotas não têm tipo de veículo definido. Selecione o tipo na coluna TIPO acima.
             </p>
