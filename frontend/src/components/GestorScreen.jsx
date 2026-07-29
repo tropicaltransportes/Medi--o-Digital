@@ -422,7 +422,7 @@ export default function GestorScreen({ aba }) {
         const contrato  = todosContratos.find(x => x.id === rota?.contrato_id);
         const veiculo   = todosVeiculos.find(x => x.id === r.veiculo_id);
         const vTroca    = todosVeiculos.find(x => x.id === r.veiculo_troca_id);
-        const motorista = todosMotoristas.find(x => x.id === r.motorista_id);
+        const motorista = todosMotoristas.find(x => String(x.id) === String(r.motorista_id));
         const kmRod     = r.km_final && r.km_inicial ? r.km_final - r.km_inicial : null;
 
         function duracao(saida, chegada) {
