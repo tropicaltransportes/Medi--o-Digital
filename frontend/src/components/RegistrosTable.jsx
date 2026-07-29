@@ -67,9 +67,11 @@ export default function RegistrosTable({
   registros,
   todasRotas = [],
   veiculos = [],
+  motoristas = [],
   onValidar,
   onEditar,
   onDomingoFeriado,
+  onVerDetalhes,
   semToggleColunas = false,
 }) {
   const G = useG();
@@ -171,6 +173,7 @@ export default function RegistrosTable({
             <input type="checkbox" title="Marcar como Domingo / Feriado"
               checked={Boolean(r.domingo_feriado)}
               onChange={e => onDomingoFeriado(r, e.target.checked)}
+              onClick={e => e.stopPropagation()}
               style={{ cursor: 'pointer', width: 16, height: 16 }} />
           </td>
         );
@@ -213,7 +216,7 @@ export default function RegistrosTable({
           <td key={col.id} style={{ ...gTd, whiteSpace: 'nowrap' }}>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               {r.status === 'completo' && (
-                <button onClick={() => onValidar(r)} style={{
+                <button onClick={e => { e.stopPropagation(); onValidar(r); }} style={{
                   ...btnAcao,
                   background: r.validado ? '#dcfce7' : G.surface,
                   color: r.validado ? '#166534' : G.muted,
@@ -222,7 +225,7 @@ export default function RegistrosTable({
                   {r.validado ? '✓ Validado' : 'Validar'}
                 </button>
               )}
-              <button onClick={() => onEditar(r)} style={{ ...btnAcao, color: G.accent, borderColor: G.accentSoft }}>
+              <button onClick={e => { e.stopPropagation(); onEditar(r); }} style={{ ...btnAcao, color: G.accent, borderColor: G.accentSoft }}>
                 Editar
               </button>
             </div>
@@ -315,8 +318,18 @@ export default function RegistrosTable({
           <tbody>
             {ordenados.map(r => {
               const rowBg = r.validado ? '#f0fdf4' : r.domingo_feriado ? '#fffbeb' : undefined;
+              const clickable = Boolean(onVerDetalhes);
               return (
-                <tr key={r.id} style={rowBg ? { background: rowBg } : undefined}>
+                <tr
+                  key={r.id}
+                  onClick={clickable ? () => onVerDetalhes(r) : undefined}
+                  style={{
+                    ...(rowBg ? { background: rowBg } : {}),
+                    ...(clickable ? { cursor: 'pointer' } : {}),
+                  }}
+                  onMouseEnter={clickable ? e => { e.currentTarget.style.filter = 'brightness(0.96)'; } : undefined}
+                  onMouseLeave={clickable ? e => { e.currentTarget.style.filter = ''; } : undefined}
+                >
                   {colsVisiveis.map(col => renderCelula(col, r))}
                 </tr>
               );

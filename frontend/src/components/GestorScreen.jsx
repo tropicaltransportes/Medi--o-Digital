@@ -32,7 +32,9 @@ export default function GestorScreen({ aba }) {
   const [todasRotas, setTodasRotas] = useState([]);
   const [todosContratos, setTodosContratos] = useState([]);
   const [todosVeiculos, setTodosVeiculos] = useState([]);
+  const [todosMotoristas, setTodosMotoristas] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [detalheRegistro, setDetalheRegistro] = useState(null);
   const [filtroContrato, setFiltroContrato] = useState('');
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRota, setFiltroRota] = useState('');
@@ -53,17 +55,19 @@ export default function GestorScreen({ aba }) {
     setCarregando(true);
     setAberta(null);
     setRotasAbertas(new Set());
-    const [{ data: regs, error }, { data: rotas }, { data: contratos }, { data: veiculos }] = await Promise.all([
+    const [{ data: regs, error }, { data: rotas }, { data: contratos }, { data: veiculos }, { data: motoristas }] = await Promise.all([
       supabase.from('registros').select('*').order('data', { ascending: false }).order('horario_saida', { ascending: false }),
       supabase.from('rotas').select('id, nome, contrato_id').order('nome'),
       supabase.from('contratos').select('id, nome, cliente').order('nome'),
       supabase.from('veiculos').select('id, placa, descricao').order('placa'),
+      supabase.from('logins').select('id, nome, email').order('nome'),
     ]);
 
     if (!error && regs) setRegistros(regs);
     if (rotas) setTodasRotas(rotas);
     if (contratos) setTodosContratos(contratos);
     if (veiculos) setTodosVeiculos(veiculos);
+    if (motoristas) setTodosMotoristas(motoristas);
     setCarregando(false);
   }
 
@@ -398,6 +402,8 @@ export default function GestorScreen({ aba }) {
                           onValidar={handleValidar}
                           onEditar={handleEditar}
                           onDomingoFeriado={handleDomingoFeriado}
+                          motoristas={todosMotoristas}
+                          onVerDetalhes={setDetalheRegistro}
                         />
                       )}
                     </div>
@@ -408,6 +414,153 @@ export default function GestorScreen({ aba }) {
           })}
         </div>
       )}
+
+      {/* Modal de detalhe do registro */}
+      {detalheRegistro && (() => {
+        const r = detalheRegistro;
+        const rota      = todasRotas.find(x => x.id === r.rota_id);
+        const contrato  = todosContratos.find(x => x.id === rota?.contrato_id);
+        const veiculo   = todosVeiculos.find(x => x.id === r.veiculo_id);
+        const vTroca    = todosVeiculos.find(x => x.id === r.veiculo_troca_id);
+        const motorista = todosMotoristas.find(x => x.id === r.motorista_id);
+        const kmRod     = r.km_final && r.km_inicial ? r.km_final - r.km_inicial : null;
+
+        function duracao(saida, chegada) {
+          if (!saida || !chegada) return '—';
+          const [sh, sm] = saida.split(':').map(Number);
+          const [ch, cm] = chegada.split(':').map(Number);
+          let mins = (ch * 60 + cm) - (sh * 60 + sm);
+          if (mins < 0) mins += 24 * 60;
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, '0') + 'min' : ''}` : `${m}min`;
+        }
+
+        const TURNO_LABEL = { rota: 'ROTA', normal: 'Turno Normal', 'turno extra': 'Turno Extra', 'rodada interna': 'Rodada Interna', manutencao: 'Manutenção' };
+        const lbl  = { fontSize: '0.7rem', fontWeight: 600, color: G.muted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 };
+        const val  = { fontSize: '0.92rem', fontWeight: 600, color: G.text };
+        const sep  = { borderTop: `1px solid ${G.border}`, margin: '16px 0' };
+
+        return (
+          <div style={overlay} onClick={e => { if (e.target === e.currentTarget) setDetalheRegistro(null); }}>
+            <div style={{ ...modalBox, maxWidth: 520 }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+                <div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: G.text, fontFamily: 'Space Grotesk, sans-serif' }}>
+                    {rota?.nome || '—'}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: G.muted, marginTop: 2 }}>
+                    {contrato?.nome || '—'}{contrato?.cliente ? ` · ${contrato.cliente}` : ''}
+                  </div>
+                </div>
+                <button onClick={() => setDetalheRegistro(null)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: G.muted, lineHeight: 1, padding: 4 }}>×</button>
+              </div>
+
+              {/* Data e horários */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+                {[
+                  ['Data', r.data ? new Date(r.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—'],
+                  ['Saída', r.horario_saida?.slice(0, 5) || '—'],
+                  ['Chegada', r.horario_chegada?.slice(0, 5) || '—'],
+                  ['Duração', duracao(r.horario_saida, r.horario_chegada)],
+                ].map(([l, v]) => (
+                  <div key={l}>
+                    <div style={lbl}>{l}</div>
+                    <div style={val}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={sep} />
+
+              {/* Veículo e condutor */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <div style={lbl}>Veículo</div>
+                  <div style={val}>{veiculo?.placa || r.troca_veiculo || '—'}</div>
+                  {veiculo?.descricao && <div style={{ fontSize: '0.78rem', color: G.muted, marginTop: 2 }}>{veiculo.descricao}</div>}
+                </div>
+                <div>
+                  <div style={lbl}>Condutor</div>
+                  <div style={val}>{motorista?.nome || '—'}</div>
+                  {motorista?.email && <div style={{ fontSize: '0.78rem', color: G.muted, marginTop: 2 }}>{motorista.email}</div>}
+                </div>
+              </div>
+
+              <div style={sep} />
+
+              {/* KM */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                {[
+                  ['KM Inicial', r.km_inicial?.toLocaleString('pt-BR') ?? '—'],
+                  ['KM Final',   r.km_final?.toLocaleString('pt-BR')   ?? '—'],
+                  ['KM Rodados', kmRod != null ? kmRod.toLocaleString('pt-BR') + ' km' : '—'],
+                ].map(([l, v]) => (
+                  <div key={l}>
+                    <div style={lbl}>{l}</div>
+                    <div style={{ ...val, color: l === 'KM Rodados' ? G.accent : G.text }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={sep} />
+
+              {/* Turno e status */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: G.accentSoft, color: G.accent }}>
+                  {TURNO_LABEL[r.tipo_turno] || r.tipo_turno || '—'}
+                </span>
+                {r.domingo_feriado && (
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: '#fef3c7', color: '#92400e' }}>Dom/Feriado</span>
+                )}
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: r.validado ? '#dcfce7' : r.status === 'completo' ? '#eff6ff' : '#f9fafb', color: r.validado ? '#166534' : r.status === 'completo' ? '#1d4ed8' : G.muted }}>
+                  {r.validado ? '✓ Validado' : r.status === 'completo' ? 'Aguardando validação' : 'Rascunho'}
+                </span>
+              </div>
+
+              {/* Troca de veículo */}
+              {(vTroca || r.troca_veiculo) && (
+                <>
+                  <div style={sep} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div>
+                      <div style={lbl}>Veículo de troca</div>
+                      <div style={val}>{vTroca?.placa || r.troca_veiculo}</div>
+                      {vTroca?.descricao && <div style={{ fontSize: '0.78rem', color: G.muted, marginTop: 2 }}>{vTroca.descricao}</div>}
+                    </div>
+                    {r.motivo_troca && (
+                      <div>
+                        <div style={lbl}>Motivo da troca</div>
+                        <div style={{ fontSize: '0.85rem', color: G.text }}>{r.motivo_troca}</div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Finalidade e observação */}
+              {(r.finalidade || r.observacao) && (
+                <>
+                  <div style={sep} />
+                  {r.finalidade && (
+                    <div style={{ marginBottom: r.observacao ? 12 : 0 }}>
+                      <div style={lbl}>Finalidade</div>
+                      <div style={{ fontSize: '0.85rem', color: G.text }}>{r.finalidade}</div>
+                    </div>
+                  )}
+                  {r.observacao && (
+                    <div>
+                      <div style={lbl}>Observação</div>
+                      <div style={{ fontSize: '0.85rem', color: G.text }}>{r.observacao}</div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal de edição */}
       {editandoRegistro && (
