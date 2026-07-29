@@ -60,7 +60,7 @@ export default function GestorScreen({ aba }) {
       supabase.from('rotas').select('id, nome, contrato_id').order('nome'),
       supabase.from('contratos').select('id, nome, cliente').order('nome'),
       supabase.from('veiculos').select('id, placa, descricao').order('placa'),
-      supabase.from('logins').select('id, nome, email').order('nome'),
+      supabase.from('usuarios').select('id, nome, email').order('nome'),
     ]);
 
     if (!error && regs) setRegistros(regs);
