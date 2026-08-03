@@ -114,7 +114,7 @@ function GloboSVG() {
   );
 }
 
-function HistoricoCards({ registros, todasRotas, veiculos }) {
+function HistoricoCards({ registros, todasRotas, veiculos, onEditar, onCancelarProposta }) {
   if (!registros.length) {
     return <p style={{ color: D.textSec, fontSize: '0.875rem', margin: 0 }}>Nenhum registro este mês.</p>;
   }
@@ -128,25 +128,54 @@ function HistoricoCards({ registros, todasRotas, veiculos }) {
         const mesAbrev = MESES[parseInt(parts[1]) - 1] || '';
         const dia      = parseInt(parts[2]) || '';
         const badge    = TURNO_BADGE[r.tipo_turno] || TURNO_BADGE.normal;
+        const temEdicao = Boolean(r.edicao_pendente);
         return (
-          <div key={r.id} style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 16, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
-            {/* Date block */}
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: D.card2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontSize: 9, fontWeight: 600, color: D.textSec, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{mesAbrev}</span>
-              <span style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: 15, color: D.text, lineHeight: 1.1 }}>{dia}</span>
-            </div>
-            {/* Info */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem', color: D.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rota}</div>
-              <div style={{ fontSize: '0.78rem', color: D.textSec, marginTop: 2 }}>
-                {veiculo} · {r.horario_saida?.slice(0,5)} → {r.horario_chegada?.slice(0,5) || '...'}
+          <div key={r.id} style={{
+            background: temEdicao ? 'oklch(0.22 0.05 80 / 0.35)' : D.card,
+            border: `1px solid ${temEdicao ? 'oklch(0.60 0.12 80 / 0.5)' : D.border}`,
+            borderRadius: 16, overflow: 'hidden',
+          }}>
+            {/* Main row */}
+            <div style={{ padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
+              {/* Date block */}
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: D.card2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 9, fontWeight: 600, color: D.textSec, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{mesAbrev}</span>
+                <span style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: 15, color: D.text, lineHeight: 1.1 }}>{dia}</span>
+              </div>
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: D.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rota}</div>
+                <div style={{ fontSize: '0.78rem', color: D.textSec, marginTop: 2 }}>
+                  {veiculo} · {r.horario_saida?.slice(0,5)} → {r.horario_chegada?.slice(0,5) || '...'}
+                </div>
+              </div>
+              {/* KM + badge */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
+                <span style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: 14, color: D.accent }}>{km} km</span>
+                <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: '2px 7px', background: badge.bg, color: badge.color }}>{badge.label}</span>
               </div>
             </div>
-            {/* KM + badge */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
-              <span style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: 14, color: D.accent }}>{km} km</span>
-              <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: '2px 7px', background: badge.bg, color: badge.color }}>{badge.label}</span>
-            </div>
+            {/* Bottom strip */}
+            {temEdicao ? (
+              <div style={{ borderTop: `1px solid oklch(0.60 0.12 80 / 0.3)`, padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'oklch(0.20 0.05 80 / 0.2)' }}>
+                <span style={{ fontSize: '0.78rem', color: D.amber, fontWeight: 600 }}>✏ Edição pendente de aprovação</span>
+                <button
+                  onClick={() => onCancelarProposta(r.id)}
+                  style={{ fontSize: '0.75rem', color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : r.status === 'completo' && (
+              <div style={{ borderTop: `1px solid ${D.border}`, padding: '8px 16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => onEditar(r)}
+                  style={{ fontSize: '0.75rem', color: D.textSec, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}
+                >
+                  Solicitar correção →
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
@@ -243,6 +272,8 @@ export default function MotoristaScreen({ usuario, onSair }) {
   const [formF, setFormF] = useState(FORM_FINALIZAR);
   const [kmAutoPreenchido, setKmAutoPreenchido] = useState(false);
   const [toast, setToast] = useState(null);
+  const [editandoRegistro, setEditandoRegistro] = useState(null);
+  const [formE, setFormE] = useState({});
 
   // ── DATA LOADING ─────────────────────────────────────────────────────────
 
@@ -454,6 +485,7 @@ export default function MotoristaScreen({ usuario, onSair }) {
   }
   function ci(key) { return (e) => setFormI(f => ({ ...f, [key]: e.target.value })); }
   function cf(key) { return (e) => setFormF(f => ({ ...f, [key]: e.target.value })); }
+  function ce(key) { return (e) => setFormE(f => ({ ...f, [key]: e.target.value })); }
 
   // ── ACTIONS ───────────────────────────────────────────────────────────────
 
@@ -567,6 +599,50 @@ export default function MotoristaScreen({ usuario, onSair }) {
     setSalvando(false);
     setView('lista');
     setPendenteFinalizar(null);
+  }
+
+  function abrirEditar(r) {
+    setEditandoRegistro(r);
+    setFormE({
+      horario_saida:    r.horario_saida?.slice(0, 5)    || '',
+      horario_chegada:  r.horario_chegada?.slice(0, 5)  || '',
+      km_inicial:       String(r.km_inicial ?? ''),
+      km_final:         String(r.km_final   ?? ''),
+      observacao:       r.observacao || '',
+    });
+    setErro('');
+    setView('editar');
+  }
+
+  async function salvarProposta(e) {
+    e.preventDefault();
+    setSalvando(true);
+    const proposta = {
+      horario_saida:   formE.horario_saida   || null,
+      horario_chegada: formE.horario_chegada || null,
+      km_inicial:      formE.km_inicial !== '' ? Number(formE.km_inicial) : null,
+      km_final:        formE.km_final   !== '' ? Number(formE.km_final)   : null,
+      observacao:      formE.observacao  || null,
+      solicitado_em:   new Date().toISOString(),
+    };
+    const { error } = await supabase.from('registros')
+      .update({ edicao_pendente: proposta })
+      .eq('id', editandoRegistro.id);
+    if (!error) {
+      setRegistros(prev => prev.map(r => r.id === editandoRegistro.id ? { ...r, edicao_pendente: proposta } : r));
+      setView('lista');
+      setEditandoRegistro(null);
+      setToast('Solicitação enviada para o gestor ✓');
+      setTimeout(() => setToast(null), 3500);
+    } else {
+      setErro('Erro ao enviar. Tente novamente.');
+    }
+    setSalvando(false);
+  }
+
+  async function cancelarProposta(registroId) {
+    await supabase.from('registros').update({ edicao_pendente: null }).eq('id', registroId);
+    setRegistros(prev => prev.map(r => r.id === registroId ? { ...r, edicao_pendente: null } : r));
   }
 
   // ── SHARED STYLES ─────────────────────────────────────────────────────────
@@ -885,6 +961,84 @@ export default function MotoristaScreen({ usuario, onSair }) {
     );
   }
 
+  // ── VIEW: EDITAR ──────────────────────────────────────────────────────────
+
+  if (view === 'editar' && editandoRegistro) {
+    const r = editandoRegistro;
+    return (
+      <div style={wrap}>
+        <div style={sectionHeader}>
+          <button style={backBtn} onClick={() => setView('lista')}>←</button>
+          <h2 style={{ margin: 0, fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.05rem', fontWeight: 600, color: D.text }}>
+            Solicitar correção
+          </h2>
+        </div>
+
+        {/* Resumo original */}
+        <div style={{ margin: '16px 16px 0', borderRadius: 16, padding: 16, background: D.card, border: `1px solid ${D.border}` }}>
+          <p style={{ margin: '0 0 10px', fontSize: '0.72rem', fontWeight: 700, color: D.textSec, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Valores atuais</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {[
+              ['Rota',       rotaNome(r.rota_id)],
+              ['Saída',      r.horario_saida?.slice(0, 5) || '—'],
+              ['Chegada',    r.horario_chegada?.slice(0, 5) || '—'],
+              ['KM Inicial', r.km_inicial ?? '—'],
+              ['KM Final',   r.km_final   ?? '—'],
+              ['Obs.',       r.observacao  || '—'],
+            ].map(([label, val]) => (
+              <div key={label}>
+                <p style={{ margin: 0, fontSize: '0.68rem', color: D.textSec, fontWeight: 600, textTransform: 'uppercase' }}>{label}</p>
+                <p style={{ margin: '2px 0 0', fontWeight: 600, fontSize: '0.85rem', color: D.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <form onSubmit={salvarProposta}>
+          <div style={{ padding: '16px 16px 0' }}>
+            <p style={{ margin: '0 0 14px', fontSize: '0.82rem', color: D.amber, fontWeight: 500, lineHeight: 1.4 }}>
+              Preencha apenas os campos que precisam de correção. O gestor irá revisar e aprovar ou rejeitar.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, ...fieldGap }}>
+              <div>
+                <label style={dLabel}>Saída</label>
+                <input type="time" value={formE.horario_saida} onChange={ce('horario_saida')} style={dInput} />
+              </div>
+              <div>
+                <label style={dLabel}>Chegada</label>
+                <input type="time" value={formE.horario_chegada} onChange={ce('horario_chegada')} style={dInput} />
+              </div>
+              <div>
+                <label style={dLabel}>KM Inicial</label>
+                <input type="number" min="0" value={formE.km_inicial} onChange={ce('km_inicial')} style={dInput} />
+              </div>
+              <div>
+                <label style={dLabel}>KM Final</label>
+                <input type="number" min="0" value={formE.km_final} onChange={ce('km_final')} style={dInput} />
+              </div>
+            </div>
+
+            <div style={fieldGap}>
+              <label style={dLabel}>Observação</label>
+              <textarea value={formE.observacao} onChange={ce('observacao')}
+                style={{ ...dInput, resize: 'vertical', fontFamily: 'Manrope, sans-serif' }}
+                rows={3} placeholder="Explique o motivo da correção..." />
+            </div>
+
+            {erro && <p style={{ fontSize: '0.85rem', color: '#f87171' }}>{erro}</p>}
+          </div>
+
+          <div style={stickyBtn}>
+            <button style={{ ...btnViolet, opacity: salvando ? 0.7 : 1 }} type="submit" disabled={salvando}>
+              {salvando ? 'Enviando...' : 'Enviar para o gestor'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   // ── VIEW: LISTA ────────────────────────────────────────────────────────────
 
   function iniciarNovo() {
@@ -1033,7 +1187,7 @@ export default function MotoristaScreen({ usuario, onSair }) {
           </div>
           {carregando
             ? <p style={{ color: D.textSec, fontSize: '0.875rem', margin: 0 }}>Carregando...</p>
-            : <HistoricoCards registros={historico} todasRotas={todasRotas} veiculos={veiculos} />}
+            : <HistoricoCards registros={historico} todasRotas={todasRotas} veiculos={veiculos} onEditar={abrirEditar} onCancelarProposta={cancelarProposta} />}
           {erro && <p style={{ fontSize: '0.85rem', color: '#f87171', marginTop: 8 }}>{erro}</p>}
         </div>
 

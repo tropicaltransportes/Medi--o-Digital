@@ -214,7 +214,10 @@ export default function RegistrosTable({
       case 'acoes':
         return (
           <td key={col.id} style={{ ...gTd, whiteSpace: 'nowrap' }}>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {r.edicao_pendente && (
+                <span style={{ ...pill, background: '#fef3c7', color: '#92400e' }}>✏ Edição pendente</span>
+              )}
               {r.status === 'completo' && (
                 <button onClick={e => { e.stopPropagation(); onValidar(r); }} style={{
                   ...btnAcao,
@@ -317,7 +320,7 @@ export default function RegistrosTable({
           </thead>
           <tbody>
             {ordenados.map(r => {
-              const rowBg = r.validado ? '#f0fdf4' : r.domingo_feriado ? '#fffbeb' : undefined;
+              const rowBg = r.edicao_pendente ? '#fefce8' : r.validado ? '#f0fdf4' : r.domingo_feriado ? '#fffbeb' : undefined;
               const clickable = Boolean(onVerDetalhes);
               return (
                 <tr

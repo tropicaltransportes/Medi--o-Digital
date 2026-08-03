@@ -103,6 +103,20 @@ export default function GestorScreen({ aba }) {
     setRegistros(prev => prev.map(x => x.id === r.id ? { ...x, validado: novoValor } : x));
   }
 
+  async function handleAprovarEdicao(r) {
+    const { solicitado_em, ...campos } = r.edicao_pendente;
+    const update = Object.fromEntries(Object.entries(campos).filter(([, v]) => v != null));
+    await supabase.from('registros').update({ ...update, edicao_pendente: null, validado: false }).eq('id', r.id);
+    setRegistros(prev => prev.map(x => x.id === r.id ? { ...x, ...update, edicao_pendente: null, validado: false } : x));
+    setDetalheRegistro(null);
+  }
+
+  async function handleRejeitarEdicao(r) {
+    await supabase.from('registros').update({ edicao_pendente: null }).eq('id', r.id);
+    setRegistros(prev => prev.map(x => x.id === r.id ? { ...x, edicao_pendente: null } : x));
+    setDetalheRegistro(null);
+  }
+
   async function handleDomingoFeriado(r, checked) {
     await supabase.from('registros').update({ domingo_feriado: checked }).eq('id', r.id);
     setRegistros(prev => prev.map(x => x.id === r.id ? { ...x, domingo_feriado: checked } : x));
@@ -586,6 +600,57 @@ export default function GestorScreen({ aba }) {
                   )}
                 </>
               )}
+
+              {/* Edição pendente */}
+              {r.edicao_pendente && (() => {
+                const ep = r.edicao_pendente;
+                const linhas = [
+                  ['Saída',      r.horario_saida?.slice(0,5),   ep.horario_saida?.slice(0,5)],
+                  ['Chegada',    r.horario_chegada?.slice(0,5),  ep.horario_chegada?.slice(0,5)],
+                  ['KM Inicial', r.km_inicial,                   ep.km_inicial],
+                  ['KM Final',   r.km_final,                     ep.km_final],
+                  ['Observação', r.observacao,                    ep.observacao],
+                ].filter(([, atual, proposto]) => proposto != null && String(proposto) !== String(atual ?? ''));
+                return (
+                  <>
+                    <div style={sep} />
+                    <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 12, padding: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#92400e' }}>✏ Edição proposta pelo motorista</div>
+                        {ep.solicitado_em && (
+                          <div style={{ fontSize: '0.72rem', color: G.muted }}>
+                            {new Date(ep.solicitado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        )}
+                      </div>
+                      {linhas.length > 0 ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px 12px', marginBottom: 14 }}>
+                          {['Campo', 'Atual', 'Proposto'].map(h => (
+                            <div key={h} style={{ fontSize: '0.68rem', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</div>
+                          ))}
+                          {linhas.map(([campo, atual, proposto]) => (
+                            <React.Fragment key={campo}>
+                              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#78350f' }}>{campo}</div>
+                              <div style={{ fontSize: '0.82rem', color: '#a16207', textDecoration: 'line-through' }}>{String(atual ?? '—')}</div>
+                              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#92400e' }}>{String(proposto)}</div>
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: '#92400e' }}>Nenhum campo alterado em relação ao original.</p>
+                      )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => handleAprovarEdicao(r)} style={{ flex: 1, background: '#166534', color: '#fff', border: 'none', borderRadius: 10, padding: '10px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                          ✓ Aprovar
+                        </button>
+                        <button onClick={() => handleRejeitarEdicao(r)} style={{ flex: 1, background: 'none', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                          ✗ Rejeitar
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         );
