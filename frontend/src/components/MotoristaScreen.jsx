@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { kmRodados } from '../storage.js';
 import { cacheSave, cacheLoad, queuePush, queueGetAll, queueRemove } from '../db.js';
@@ -275,7 +275,6 @@ export default function MotoristaScreen({ usuario, onSair }) {
   const [editandoRegistro, setEditandoRegistro] = useState(null);
   const [formE, setFormE] = useState({});
   const [avatar, setAvatar] = useState(null);
-  const avatarInputRef = useRef(null);
 
   // ── DATA LOADING ─────────────────────────────────────────────────────────
 
@@ -1088,26 +1087,19 @@ export default function MotoristaScreen({ usuario, onSair }) {
         {/* ── GREETING ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              onClick={() => avatarInputRef.current?.click()}
-              title="Alterar foto"
-              style={{ position: 'relative', width: 44, height: 44, borderRadius: 14, overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
-            >
+            <label htmlFor="avatar-file-input" title="Alterar foto" style={{ position: 'relative', width: 44, height: 44, borderRadius: 14, overflow: 'hidden', cursor: 'pointer', flexShrink: 0, display: 'block' }}>
               {avatar
                 ? <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 : <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${D.accent}, ${D.accentDk})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '1rem', color: '#fff' }}>{initials}</div>
               }
-              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.18s' }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                onMouseLeave={e => e.currentTarget.style.opacity = '0'}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.40)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.85 }}>
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                   <circle cx="12" cy="13" r="4"/>
                 </svg>
               </div>
-            </div>
-            <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+            </label>
+            <input id="avatar-file-input" type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
             <div>
               <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600, fontSize: 17, color: D.text }}>Olá, {primeiroNome}</div>
               <div style={{ fontSize: 12.5, color: D.textSec, marginTop: 1 }}>{formatDateLong()}</div>
