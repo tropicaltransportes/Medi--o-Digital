@@ -17,6 +17,8 @@ const TURNOS = [
   { value: 'manutencao', label: 'Manutenção' },
 ];
 
+const MESES_LABEL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
 const overlay = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
@@ -35,8 +37,10 @@ export default function GestorScreen({ aba }) {
   const [todosMotoristas, setTodosMotoristas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [detalheRegistro, setDetalheRegistro] = useState(null);
+  const _now = new Date();
   const [filtroContrato, setFiltroContrato] = useState('');
-  const [filtroMes, setFiltroMes] = useState('');
+  const [filtroAno, setFiltroAno] = useState(String(_now.getFullYear()));
+  const [filtroMesNum, setFiltroMesNum] = useState(String(_now.getMonth() + 1).padStart(2, '0'));
   const [filtroRota, setFiltroRota] = useState('');
   const [aberta, setAberta] = useState(null);
   const [rotasAbertas, setRotasAbertas] = useState(new Set());
@@ -143,21 +147,31 @@ export default function GestorScreen({ aba }) {
     [registros, todasRotas, todosContratos],
   );
 
-  const meses = useMemo(
-    () => [...new Set(registros.map(r => r.data?.slice(0, 7)).filter(Boolean))].sort((a, b) => b.localeCompare(a)),
+  const anos = useMemo(
+    () => [...new Set(registros.map(r => r.data?.slice(0, 4)).filter(Boolean))].sort((a, b) => b.localeCompare(a)),
     [registros],
   );
+
+  const mesesDisponiveis = useMemo(() => {
+    return new Set(
+      registros
+        .filter(r => !filtroAno || r.data?.slice(0, 4) === filtroAno)
+        .map(r => r.data?.slice(5, 7))
+        .filter(Boolean),
+    );
+  }, [registros, filtroAno]);
 
   const rotasDisponiveis = useMemo(() => {
     const ids = new Set(
       registros
         .filter(r => !filtroContrato || contratoNome(r) === filtroContrato)
-        .filter(r => !filtroMes || r.data?.slice(0, 7) === filtroMes)
+        .filter(r => !filtroAno    || r.data?.slice(0, 4) === filtroAno)
+        .filter(r => !filtroMesNum || r.data?.slice(5, 7) === filtroMesNum)
         .map(r => r.rota_id)
         .filter(Boolean),
     );
     return todasRotas.filter(r => ids.has(r.id)).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [registros, todasRotas, todosContratos, filtroContrato, filtroMes]);
+  }, [registros, todasRotas, todosContratos, filtroContrato, filtroAno, filtroMesNum]);
 
   const folhas = useMemo(() => {
     const map = new Map();
@@ -172,8 +186,9 @@ export default function GestorScreen({ aba }) {
     }
     return Array.from(map.values())
       .filter(f =>
-        (!filtroContrato || f.contrato === filtroContrato) &&
-        (!filtroMes      || f.mes      === filtroMes),
+        (!filtroContrato || f.contrato          === filtroContrato) &&
+        (!filtroAno      || f.mes.slice(0, 4)   === filtroAno) &&
+        (!filtroMesNum   || f.mes.slice(5, 7)   === filtroMesNum),
       )
       .sort((a, b) => b.mes.localeCompare(a.mes));
   }, [registros, todasRotas, todosContratos, filtroContrato, filtroMes, filtroRota]);
@@ -274,15 +289,29 @@ export default function GestorScreen({ aba }) {
               onSelect={v => { setFiltroContrato(v); setDdAberto(''); }}
             />
             <PillDD
-              label={filtroMes ? formatarMes(filtroMes) : 'Todos os meses'}
+              label={filtroMesNum ? MESES_LABEL[Number(filtroMesNum) - 1] : 'Todos os meses'}
               open={ddAberto === 'mes'}
               onToggle={() => setDdAberto(ddAberto === 'mes' ? '' : 'mes')}
               onBlur={fecharDD}
               options={[
-                { value: '', label: 'Todos os meses', active: filtroMes === '' },
-                ...meses.map(m => ({ value: m, label: formatarMes(m), active: filtroMes === m })),
+                { value: '', label: 'Todos os meses', active: filtroMesNum === '' },
+                ...MESES_LABEL
+                  .map((nome, i) => ({ value: String(i + 1).padStart(2, '0'), label: nome }))
+                  .filter(m => mesesDisponiveis.has(m.value))
+                  .map(m => ({ ...m, active: filtroMesNum === m.value })),
               ]}
-              onSelect={v => { setFiltroMes(v); setDdAberto(''); }}
+              onSelect={v => { setFiltroMesNum(v); setDdAberto(''); }}
+            />
+            <PillDD
+              label={filtroAno || 'Todos os anos'}
+              open={ddAberto === 'ano'}
+              onToggle={() => setDdAberto(ddAberto === 'ano' ? '' : 'ano')}
+              onBlur={fecharDD}
+              options={[
+                { value: '', label: 'Todos os anos', active: filtroAno === '' },
+                ...anos.map(a => ({ value: a, label: a, active: filtroAno === a })),
+              ]}
+              onSelect={v => { setFiltroAno(v); setDdAberto(''); }}
             />
             <PillDD
               label={filtroRota ? (rotasDisponiveis.find(r => String(r.id) === filtroRota)?.nome || 'Rota') : 'Todas as rotas'}
