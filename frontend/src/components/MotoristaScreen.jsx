@@ -492,7 +492,6 @@ export default function MotoristaScreen({ usuario, onSair }) {
   function ci(key) { return (e) => setFormI(f => ({ ...f, [key]: e.target.value })); }
   function cf(key) { return (e) => setFormF(f => ({ ...f, [key]: e.target.value })); }
   function ce(key) { return (e) => setFormE(f => ({ ...f, [key]: e.target.value })); }
-<<<<<<< HEAD
 
   function handleAvatarChange(e) {
     const file = e.target.files?.[0];
