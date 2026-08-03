@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { kmRodados } from '../storage.js';
 import { cacheSave, cacheLoad, queuePush, queueGetAll, queueRemove } from '../db.js';
@@ -274,6 +274,8 @@ export default function MotoristaScreen({ usuario, onSair }) {
   const [toast, setToast] = useState(null);
   const [editandoRegistro, setEditandoRegistro] = useState(null);
   const [formE, setFormE] = useState({});
+  const [avatar, setAvatar] = useState(null);
+  const avatarInputRef = useRef(null);
 
   // ── DATA LOADING ─────────────────────────────────────────────────────────
 
@@ -369,6 +371,11 @@ export default function MotoristaScreen({ usuario, onSair }) {
       queueGetAll().then(setPendentes);
     }
   }, []);
+
+  useEffect(() => {
+    supabase.from('usuarios').select('avatar').eq('id', usuario.id).single()
+      .then(({ data }) => { if (data?.avatar) setAvatar(data.avatar); });
+  }, [usuario.id]);
 
   useEffect(() => {
     carregarDados();
@@ -486,6 +493,31 @@ export default function MotoristaScreen({ usuario, onSair }) {
   function ci(key) { return (e) => setFormI(f => ({ ...f, [key]: e.target.value })); }
   function cf(key) { return (e) => setFormF(f => ({ ...f, [key]: e.target.value })); }
   function ce(key) { return (e) => setFormE(f => ({ ...f, [key]: e.target.value })); }
+<<<<<<< HEAD
+
+  function handleAvatarChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 200; canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+      const size = Math.min(img.width, img.height);
+      ctx.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 200, 200);
+      const base64 = canvas.toDataURL('image/jpeg', 0.82);
+      URL.revokeObjectURL(url);
+      const { error } = await supabase.from('usuarios').update({ avatar: base64 }).eq('id', usuario.id);
+      if (!error) {
+        setAvatar(base64);
+        setToast('Foto atualizada ✓');
+        setTimeout(() => setToast(null), 2500);
+      }
+    };
+    img.src = url;
+    e.target.value = '';
+  }
 
   // ── ACTIONS ───────────────────────────────────────────────────────────────
 
@@ -1056,9 +1088,26 @@ export default function MotoristaScreen({ usuario, onSair }) {
         {/* ── GREETING ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 14, background: `linear-gradient(135deg, ${D.accent}, ${D.accentDk})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '1rem', color: '#fff', flexShrink: 0 }}>
-              {initials}
+            <div
+              onClick={() => avatarInputRef.current?.click()}
+              title="Alterar foto"
+              style={{ position: 'relative', width: 44, height: 44, borderRadius: 14, overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
+            >
+              {avatar
+                ? <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                : <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${D.accent}, ${D.accentDk})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '1rem', color: '#fff' }}>{initials}</div>
+              }
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.18s' }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '0'}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </div>
             </div>
+            <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
             <div>
               <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600, fontSize: 17, color: D.text }}>Olá, {primeiroNome}</div>
               <div style={{ fontSize: 12.5, color: D.textSec, marginTop: 1 }}>{formatDateLong()}</div>
