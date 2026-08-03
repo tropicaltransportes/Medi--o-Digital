@@ -52,6 +52,7 @@ export default function GestorScreen({ aba }) {
   const [editandoRegistro, setEditandoRegistro] = useState(null);
   const [formEdit, setFormEdit] = useState({});
   const [salvandoEdit, setSalvandoEdit] = useState(false);
+  const [avatarZoom, setAvatarZoom] = useState(null);
 
   useEffect(() => { carregarRegistros(); }, []);
 
@@ -528,7 +529,7 @@ export default function GestorScreen({ aba }) {
                   <div style={lbl}>Condutor</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
                     {motorista?.avatar
-                      ? <img src={motorista.avatar} alt={motorista.nome} style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+                      ? <img src={motorista.avatar} alt={motorista.nome} onClick={() => setAvatarZoom({ src: motorista.avatar, nome: motorista.nome })} style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', flexShrink: 0, cursor: 'zoom-in' }} />
                       : motorista?.nome
                         ? <div style={{ width: 36, height: 36, borderRadius: 10, background: G.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, color: G.accent, flexShrink: 0 }}>
                             {motorista.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
@@ -736,6 +737,21 @@ export default function GestorScreen({ aba }) {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox avatar */}
+      {avatarZoom && (
+        <div
+          onClick={() => setAvatarZoom(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, cursor: 'zoom-out' }}
+        >
+          <img
+            src={avatarZoom.src}
+            alt={avatarZoom.nome}
+            style={{ maxWidth: '90vw', maxHeight: '80vh', borderRadius: 16, objectFit: 'contain', boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}
+          />
+          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>{avatarZoom.nome}</span>
         </div>
       )}
     </div>
