@@ -56,7 +56,7 @@ export default function GestorScreen({ aba }) {
     setAberta(null);
     setRotasAbertas(new Set());
     const [{ data: regs, error }, { data: rotas }, { data: contratos }, { data: veiculos }, { data: motoristas }] = await Promise.all([
-      supabase.from('registros').select('*').order('data', { ascending: false }).order('horario_saida', { ascending: false }),
+      supabase.from('registros').select('*, logins(nome, email)').order('data', { ascending: false }).order('horario_saida', { ascending: false }),
       supabase.from('rotas').select('id, nome, contrato_id').order('nome'),
       supabase.from('contratos').select('id, nome, cliente').order('nome'),
       supabase.from('veiculos').select('id, placa, descricao').order('placa'),
@@ -422,7 +422,7 @@ export default function GestorScreen({ aba }) {
         const contrato  = todosContratos.find(x => x.id === rota?.contrato_id);
         const veiculo   = todosVeiculos.find(x => x.id === r.veiculo_id);
         const vTroca    = todosVeiculos.find(x => x.id === r.veiculo_troca_id);
-        const motorista = todosMotoristas.find(x => String(x.id) === String(r.motorista_id));
+        const motorista = r.logins || todosMotoristas.find(x => String(x.id) === String(r.motorista_id));
         const kmRod     = r.km_final && r.km_inicial ? r.km_final - r.km_inicial : null;
 
         function duracao(saida, chegada) {
