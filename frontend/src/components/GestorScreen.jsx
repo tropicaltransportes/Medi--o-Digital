@@ -64,7 +64,7 @@ export default function GestorScreen({ aba }) {
       supabase.from('rotas').select('id, nome, contrato_id').order('nome'),
       supabase.from('contratos').select('id, nome, cliente').order('nome'),
       supabase.from('veiculos').select('id, placa, descricao').order('placa'),
-      supabase.from('usuarios').select('id, nome, email').order('nome'),
+      supabase.from('usuarios').select('id, nome, email, avatar').order('nome'),
     ]);
 
     if (!error && regs) setRegistros(regs);
@@ -526,8 +526,20 @@ export default function GestorScreen({ aba }) {
                 </div>
                 <div>
                   <div style={lbl}>Condutor</div>
-                  <div style={val}>{motorista?.nome || '—'}</div>
-                  {motorista?.email && <div style={{ fontSize: '0.78rem', color: G.muted, marginTop: 2 }}>{motorista.email}</div>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                    {motorista?.avatar
+                      ? <img src={motorista.avatar} alt={motorista.nome} style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+                      : motorista?.nome
+                        ? <div style={{ width: 36, height: 36, borderRadius: 10, background: G.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, color: G.accent, flexShrink: 0 }}>
+                            {motorista.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                          </div>
+                        : null
+                    }
+                    <div>
+                      <div style={val}>{motorista?.nome || '—'}</div>
+                      {motorista?.email && <div style={{ fontSize: '0.78rem', color: G.muted, marginTop: 1 }}>{motorista.email}</div>}
+                    </div>
+                  </div>
                 </div>
               </div>
 
