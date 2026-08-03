@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { kmRodados } from '../storage.js';
 import { cacheSave, cacheLoad, queuePush, queueGetAll, queueRemove } from '../db.js';
