@@ -191,7 +191,7 @@ export default function GestorScreen({ aba }) {
         (!filtroMesNum   || f.mes.slice(5, 7)   === filtroMesNum),
       )
       .sort((a, b) => b.mes.localeCompare(a.mes));
-  }, [registros, todasRotas, todosContratos, filtroContrato, filtroMes, filtroRota]);
+  }, [registros, todasRotas, todosContratos, filtroContrato, filtroAno, filtroMesNum, filtroRota]);
 
   function rotasDaFolha(folha) {
     const map = new Map();
