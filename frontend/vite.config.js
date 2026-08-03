@@ -22,8 +22,8 @@ export default defineConfig({
       manifest: {
         name: 'Medição de Rotas',
         short_name: 'Medição',
-        theme_color: '#5D52D1',
-        background_color: '#14132B',
+        theme_color: '#177A3A',
+        background_color: '#0f1a13',
         display: 'standalone',
         icons: [
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
