@@ -634,11 +634,14 @@ export default function MotoristaScreen({ usuario, onSair }) {
   function abrirEditar(r) {
     setEditandoRegistro(r);
     setFormE({
-      horario_saida:    r.horario_saida?.slice(0, 5)    || '',
-      horario_chegada:  r.horario_chegada?.slice(0, 5)  || '',
-      km_inicial:       String(r.km_inicial ?? ''),
-      km_final:         String(r.km_final   ?? ''),
-      observacao:       r.observacao || '',
+      contrato_id:     String(r.contrato_id ?? ''),
+      rota_id:         String(r.rota_id     ?? ''),
+      veiculo_id:      String(r.veiculo_id  ?? ''),
+      horario_saida:   r.horario_saida?.slice(0, 5)   || '',
+      horario_chegada: r.horario_chegada?.slice(0, 5) || '',
+      km_inicial:      String(r.km_inicial ?? ''),
+      km_final:        String(r.km_final   ?? ''),
+      observacao:      r.observacao || '',
     });
     setErro('');
     setView('editar');
@@ -648,6 +651,9 @@ export default function MotoristaScreen({ usuario, onSair }) {
     e.preventDefault();
     setSalvando(true);
     const proposta = {
+      contrato_id:     formE.contrato_id !== '' ? Number(formE.contrato_id) : null,
+      rota_id:         formE.rota_id     !== '' ? Number(formE.rota_id)     : null,
+      veiculo_id:      formE.veiculo_id  !== '' ? Number(formE.veiculo_id)  : null,
       horario_saida:   formE.horario_saida   || null,
       horario_chegada: formE.horario_chegada || null,
       km_inicial:      formE.km_inicial !== '' ? Number(formE.km_inicial) : null,
@@ -1009,7 +1015,9 @@ export default function MotoristaScreen({ usuario, onSair }) {
           <p style={{ margin: '0 0 10px', fontSize: '0.72rem', fontWeight: 700, color: D.textSec, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Valores atuais</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
             {[
+              ['Contrato',   contratos.find(c => c.id === r.contrato_id)?.nome || '—'],
               ['Rota',       rotaNome(r.rota_id)],
+              ['Veículo',    veiculoPlaca(r.veiculo_id)],
               ['Saída',      r.horario_saida?.slice(0, 5) || '—'],
               ['Chegada',    r.horario_chegada?.slice(0, 5) || '—'],
               ['KM Inicial', r.km_inicial ?? '—'],
@@ -1029,6 +1037,35 @@ export default function MotoristaScreen({ usuario, onSair }) {
             <p style={{ margin: '0 0 14px', fontSize: '0.82rem', color: D.amber, fontWeight: 500, lineHeight: 1.4 }}>
               Preencha apenas os campos que precisam de correção. O gestor irá revisar e aprovar ou rejeitar.
             </p>
+
+            {/* Contrato */}
+            <div style={fieldGap}>
+              <label style={dLabel}>Contrato</label>
+              <select value={formE.contrato_id} onChange={e => { ce('contrato_id')(e); setFormE(f => ({ ...f, rota_id: '' })); }} style={dInput}>
+                <option value="">— sem alteração —</option>
+                {contratos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+
+            {/* Rota (filtrada pelo contrato escolhido ou pelo contrato atual) */}
+            <div style={fieldGap}>
+              <label style={dLabel}>Rota</label>
+              <select value={formE.rota_id} onChange={ce('rota_id')} style={dInput}>
+                <option value="">— sem alteração —</option>
+                {todasRotas
+                  .filter(rt => !formE.contrato_id || String(rt.contrato_id) === String(formE.contrato_id))
+                  .map(rt => <option key={rt.id} value={rt.id}>{rt.nome}</option>)}
+              </select>
+            </div>
+
+            {/* Veículo */}
+            <div style={fieldGap}>
+              <label style={dLabel}>Veículo</label>
+              <select value={formE.veiculo_id} onChange={ce('veiculo_id')} style={dInput}>
+                <option value="">— sem alteração —</option>
+                {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa}{v.descricao ? ` · ${v.descricao}` : ''}</option>)}
+              </select>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, ...fieldGap }}>
               <div>

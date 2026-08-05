@@ -617,12 +617,18 @@ export default function GestorScreen({ aba }) {
               {/* Edição pendente */}
               {r.edicao_pendente && (() => {
                 const ep = r.edicao_pendente;
+                const nomeContrato = id => todosContratos.find(c => c.id === Number(id))?.nome;
+                const nomeRota     = id => todasRotas.find(rt => rt.id === Number(id))?.nome;
+                const placaVeiculo = id => todosVeiculos.find(v => v.id === Number(id))?.placa;
                 const linhas = [
-                  ['Saída',      r.horario_saida?.slice(0,5),   ep.horario_saida?.slice(0,5)],
-                  ['Chegada',    r.horario_chegada?.slice(0,5),  ep.horario_chegada?.slice(0,5)],
-                  ['KM Inicial', r.km_inicial,                   ep.km_inicial],
-                  ['KM Final',   r.km_final,                     ep.km_final],
-                  ['Observação', r.observacao,                    ep.observacao],
+                  ['Contrato',   nomeContrato(r.contrato_id),    ep.contrato_id != null ? nomeContrato(ep.contrato_id) : null],
+                  ['Rota',       nomeRota(r.rota_id),             ep.rota_id     != null ? nomeRota(ep.rota_id)         : null],
+                  ['Veículo',    placaVeiculo(r.veiculo_id),      ep.veiculo_id  != null ? placaVeiculo(ep.veiculo_id)  : null],
+                  ['Saída',      r.horario_saida?.slice(0,5),     ep.horario_saida?.slice(0,5)],
+                  ['Chegada',    r.horario_chegada?.slice(0,5),   ep.horario_chegada?.slice(0,5)],
+                  ['KM Inicial', r.km_inicial,                    ep.km_inicial],
+                  ['KM Final',   r.km_final,                      ep.km_final],
+                  ['Observação', r.observacao,                     ep.observacao],
                 ].filter(([, atual, proposto]) => proposto != null && String(proposto) !== String(atual ?? ''));
                 return (
                   <>
